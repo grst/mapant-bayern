@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLayers Local Tiles Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@8.2.0/ol.css" type="text/css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        .map {
+            height: 100vh;
+            width: 100vw;
+        }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            font-size: 11px;
+            line-height: 1.3;
+            z-index: 1000;
+            border-top: 1px solid #ddd;
+            text-align: center;
+        }
+        .footer a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .footer-separator {
+            margin: 0 5px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="map" class="map"></div>
+    <div class="info">MapAnt Allgäu</div>
+    <button id="toggleGrid">Toggle Grid</button>
+
+    <div class="footer">
+        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+        <span class="footer-separator">|</span>
+        © <a href="https://geodaten.bayern.de/opengeodata/" target="_blank" rel="noopener">Bayerische Vermessungsverwaltung</a> (CC-BY-4.0)
+        <span class="footer-separator">|</span>
+        Made with <a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">karttapullautin</a> and <a href="https://github.com/grst/karttapullautin2tiles" target="_blank" rel="noopener">karttapullautin2tiles</a>
+        <span class="footer-separator">|</span>
+        <a href="https://orienteering-allgaeu.de/impressum/" target="_blank" rel="noopener">Impressum</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
+    <script>
+        // Create OpenStreetMap background layer
+        const osmLayer = new ol.layer.Tile({
+            source: new ol.source.OSM()
+        });
+
+        // Create the custom tile layer
+        const customTileLayer = new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: '{z}/{x}/{y}.png',
+                minZoom: 13,
+                maxZoom: 18,
+                tileLoadFunction: function(imageTile, src) {
+                    // Handle CORS issues for local files
+                    imageTile.getImage().src = src;
+                }
+            }),
+            opacity: 0.8 // Make custom tiles slightly transparent to see OSM underneath
+        });
+
+        // Create debug tile layer to show tile boundaries
+        const debugLayer = new ol.layer.Tile({
+            source: new ol.source.TileDebug({
+                tileGrid: customTileLayer.getSource().getTileGrid()
+            }),
+            visible: false // Debug grid is disabled by default
+        });
+
+        // Create the map with OSM as background and custom tiles on top
+        const map = new ol.Map({
+            target: 'map',
+            layers: [
+                osmLayer,      // Background layer
+                customTileLayer, // Custom tiles overlay
+                debugLayer     // Debug grid showing tile boundaries
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([10.2142, 47.5635]), // Immenstadt im Allgäu coordinates
+                zoom: 11,
+                minZoom: 1,
+                maxZoom: 18
+            })
+        });
+
+        // Add controls
+        map.addControl(new ol.control.FullScreen());
+        map.addControl(new ol.control.ScaleLine());
+        map.addControl(new ol.control.ZoomSlider());
+
+        // Toggle debug grid visibility
+        document.getElementById('toggleGrid').addEventListener('click', function() {
+            debugLayer.setVisible(!debugLayer.getVisible());
+        });
+    </script>
+</body>
+</html>

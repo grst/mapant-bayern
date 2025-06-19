@@ -1,0 +1,5 @@
+.netlify
+*
+!index.html
+!netlify.toml
+!.gitignore
