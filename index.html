@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenLayers Local Tiles Viewer</title>
+    <title>Mapant Allgäu</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@8.2.0/ol.css" type="text/css">
     <style>
         html, body {
@@ -67,7 +67,10 @@
 </head>
 <body>
     <div id="map" class="map"></div>
-    <div class="info">MapAnt Allgäu</div>
+    <div class="info">
+        <strong>MapAnt Allgäu</strong><br>
+        <a href="https://github.com/grst/mapant-bayern/" target="_blank" rel="noopener">Source on GitHub</a>
+    </div>
     <button id="toggleGrid">Toggle Grid</button>
 
     <div class="footer">
@@ -91,14 +94,14 @@
         const customTileLayer = new ol.layer.Tile({
             source: new ol.source.XYZ({
                 url: '{z}/{x}/{y}.png',
-                minZoom: 13,
+                minZoom: 11,
                 maxZoom: 18,
                 tileLoadFunction: function(imageTile, src) {
                     // Handle CORS issues for local files
                     imageTile.getImage().src = src;
                 }
             }),
-            opacity: 0.8 // Make custom tiles slightly transparent to see OSM underneath
+            opacity: 1 // Make custom tiles slightly transparent to see OSM underneath
         });
 
         // Create debug tile layer to show tile boundaries
