@@ -112,6 +112,22 @@
             visible: false // Debug grid is disabled by default
         });
 
+        // Parse URL parameters to restore position
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.hash.substring(1));
+            return {
+                zoom: params.get('zoom'),
+                lat: params.get('lat'),
+                lon: params.get('lon')
+            };
+        }
+
+        const urlParams = getUrlParams();
+        const initialCenter = (urlParams.lat && urlParams.lon) 
+            ? ol.proj.fromLonLat([parseFloat(urlParams.lon), parseFloat(urlParams.lat)])
+            : ol.proj.fromLonLat([10.2142, 47.5635]); // Immenstadt im Allgäu coordinates
+        const initialZoom = urlParams.zoom ? parseInt(urlParams.zoom) : 11;
+
         // Create the map with OSM as background and custom tiles on top
         const map = new ol.Map({
             target: 'map',
@@ -121,8 +137,8 @@
                 debugLayer     // Debug grid showing tile boundaries
             ],
             view: new ol.View({
-                center: ol.proj.fromLonLat([10.2142, 47.5635]), // Immenstadt im Allgäu coordinates
-                zoom: 11,
+                center: initialCenter,
+                zoom: initialZoom,
                 minZoom: 1,
                 maxZoom: 18
             })
@@ -136,6 +152,15 @@
         // Toggle debug grid visibility
         document.getElementById('toggleGrid').addEventListener('click', function() {
             debugLayer.setVisible(!debugLayer.getVisible());
+        });
+
+        // Update URL hash automatically when map view changes
+        map.on('moveend', function() {
+            const view = map.getView();
+            const center = view.getCenter();
+            const lonLat = ol.proj.toLonLat(center);
+            const zoom = view.getZoom();
+            window.location.hash = `zoom=${Math.round(zoom)}&lat=${lonLat[1].toFixed(5)}&lon=${lonLat[0].toFixed(5)}`;
         });
     </script>
 </body>
