@@ -93,7 +93,7 @@
         // Create the custom tile layer
         const customTileLayer = new ol.layer.Tile({
             source: new ol.source.XYZ({
-                url: '{z}/{x}/{y}.png',
+                url: 'tiles/{z}/{x}/{y}.png',
                 minZoom: 11,
                 maxZoom: 18,
                 tileLoadFunction: function(imageTile, src) {
