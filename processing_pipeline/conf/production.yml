@@ -27,7 +27,7 @@ max_zoom: 18
 grid_size: 16
 pullauta_processes: 16
 
-osm_chunk_size: 8 
+osm_chunk_size: 4 
 
 map_title: 'mapant -- Bayern'
 outdir: /mnt/nvme/results/prod
