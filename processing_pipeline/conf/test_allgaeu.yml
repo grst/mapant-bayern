@@ -5,17 +5,12 @@
 #
 # Unlike test_local/test_immenstadt this does not shrink grid_size, pullauta_processes or the zoom
 # range: it runs with the pipeline's production defaults, so it is meant to be run on
-# production-sized hardware (combine with -profile c8id) rather than a laptop.
+# production-sized hardware rather than a laptop.
 #
 # The box straddles the Bavaria/Austria/Liechtenstein border. Of the ~3,100 1km tiles it covers, only
 # 1,629 are in Bavaria's tiles_csv; the rest are simply absent from the CSV and PLAN_GRIDS renders
 # only the covered side, no special handling needed. Those 1,629 core tiles are ~312 GiB; with the
 # ~1.44x halo amplification at the default grid_size (10) that's roughly 450 GiB actually fetched.
-#
-# A params-file rather than a -profile: it is nothing but params (no process/container overrides),
-# and paths are relative to the repo root, so run it from there:
-#
-#   nextflow run . -profile podman,c8id -params-file conf/test_allgaeu.yml
 
 tiles_csv: input/laz_tiles.csv 
 osm_pbf: input/bayern-latest.osm.pbf 
@@ -30,7 +25,7 @@ base_zoom: 12
 max_zoom: 18
 
 grid_size: 16
-pullauta_processes: 8 
+pullauta_processes: 16 
 
 osm_chunk_size: 8 
 
