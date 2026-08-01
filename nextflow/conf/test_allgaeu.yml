@@ -30,7 +30,7 @@ base_zoom: 12
 max_zoom: 18
 
 grid_size: 16
-pullauta_processes: 16
+pullauta_processes: 12 
 
 osm_chunk_size: 8 
 
