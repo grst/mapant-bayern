@@ -3,3 +3,4 @@ tiles
 !index.html
 !netlify.toml
 !.gitignore
+.devcontainer
