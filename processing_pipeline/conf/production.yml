@@ -31,3 +31,4 @@ osm_chunk_size: 4
 
 map_title: 'mapant -- Bayern'
 outdir: /mnt/nvme/results/prod
+publish_mode: link
