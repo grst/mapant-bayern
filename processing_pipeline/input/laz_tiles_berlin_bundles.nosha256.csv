@@ -1,0 +1,10 @@
+tile,url,size_bytes,sha256,crs,min_x,min_y,max_x,max_y,min_lon,min_lat,max_lon,max_lat,units
+Suedwest.zip,https://gdi.berlin.de/data/a_als/atom/Suedwest.zip,31404247035,,EPSG:25833,369000,5805000,384000,5816000,13.0710618,52.3795749,13.2956376,52.4818065,Berlin Suedwest
+West.zip,https://gdi.berlin.de/data/a_als/atom/West.zip,26928566820,,EPSG:25833,372000,5816000,384000,5826000,13.1113586,52.4791241,13.2918191,52.5716680,Berlin West
+Nordwest.zip,https://gdi.berlin.de/data/a_als/atom/Nordwest.zip,16120752822,,EPSG:25833,372000,5826000,384000,5837000,13.1070988,52.5689768,13.2883284,52.6705138,Berlin Nordwest
+Sued.zip,https://gdi.berlin.de/data/a_als/atom/Sued.zip,38259831623,,EPSG:25833,384000,5803000,400000,5816000,13.2918191,52.3649844,13.5312281,52.4849732,Berlin Sued
+Mitte.zip,https://gdi.berlin.de/data/a_als/atom/Mitte.zip,36734670085,,EPSG:25833,384000,5816000,400000,5826000,13.2883284,52.4818065,13.5273389,52.5748448,Berlin Mitte
+Nord.zip,https://gdi.berlin.de/data/a_als/atom/Nord.zip,32000910096,,EPSG:25833,384000,5826000,400000,5838000,13.2841151,52.5716680,13.5243290,52.6826889,Berlin Nord
+Suedost.zip,https://gdi.berlin.de/data/a_als/atom/Suedost.zip,51259957058,,EPSG:25833,400000,5799000,417000,5816000,13.5273389,52.3321879,13.7818407,52.4878240,Berlin Suedost
+Ost.zip,https://gdi.berlin.de/data/a_als/atom/Ost.zip,15741683636,,EPSG:25833,400000,5816000,410000,5826000,13.5243290,52.4849732,13.6745598,52.5765916,Berlin Ost
+Nordost.zip,https://gdi.berlin.de/data/a_als/atom/Nordost.zip,982934068,,EPSG:25833,400000,5826000,404000,5835000,13.5216065,52.5748448,13.5833358,52.6564509,Berlin Nordost
