@@ -1,0 +1,32 @@
+# A full production run over Rheinland-Pfalz. Mirrors production.yml (Bayern) -- same profile,
+# same process sizing -- and differs only in the two inputs and the title.
+#
+#   nextflow run . -profile podman,c8id -w /mnt/nvme/work \
+#       -params-file conf/production_rlp.yml --outdir /mnt/nvme/results
+#
+# See production.yml for why -w and --outdir are on the command line rather than in here.
+#
+# Budget: 21,207 tiles, 4.71 TiB (see input/README.md) -- roughly a third of Bayern on both counts,
+# so expect the run to scale down accordingly. As with Bayern the download is the likely binding
+# constraint; benchmark bandwidth from the instance before trusting any estimate.
+#
+# The tiles are EPSG:25832, same as Bayern, so nothing about grid planning or the OSM reprojection
+# changes.
+
+tiles_csv: input/laz_tiles_rlp.csv
+osm_pbf: input/rheinland-pfalz-latest.osm.pbf
+
+download_jobs: 8
+download_limit_rate: '200M'
+
+base_zoom: 12
+max_zoom: 18
+
+grid_size: 16
+pullauta_processes: 16
+
+osm_chunk_size: 4
+
+map_title: 'mapant -- Rheinland-Pfalz'
+outdir: /mnt/nvme/results/prod_rlp
+publish_mode: link

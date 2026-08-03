@@ -4,3 +4,6 @@ tiles
 !netlify.toml
 !.gitignore
 .devcontainer
+*.pyc
+*.pyo
+__pycache__
