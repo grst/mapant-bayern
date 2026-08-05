@@ -94,9 +94,10 @@ function decodeImage(blob: Blob): Promise<HTMLImageElement> {
  * The orienteering map itself: WebP tiles read straight out of the PMTiles
  * archive over HTTP range requests.
  */
-function createMapantLayer(): TileLayer<ImageTileSource> {
+function createMapantLayer(cacheSize?: number): TileLayer<ImageTileSource> {
   const archive = new PMTiles(MAPANT_PMTILES);
   return new TileLayer({
+    cacheSize,
     // Zoom range and extent are hardcoded rather than read from the archive: the
     // layer's minZoom is exclusive, so without the epsilon z12 itself would be
     // dropped, and OpenLayers would otherwise clamp to the lowest available zoom
@@ -120,7 +121,7 @@ function createMapantLayer(): TileLayer<ImageTileSource> {
  * Hill shading computed in the browser from Mapterhorn's terrarium-encoded DEM,
  * following the OpenLayers "Shaded Relief (with WebGL)" example.
  */
-function createHillshadeLayer(): WebGLTileLayer {
+function createHillshadeLayer(cacheSize?: number): WebGLTileLayer {
   const elevation = (xOffset: number, yOffset: number) => [
     '+',
     ['*', 255 * 256, ['band', 1, xOffset, yOffset]],
@@ -164,6 +165,7 @@ function createHillshadeLayer(): WebGLTileLayer {
 
   return new WebGLTileLayer({
     visible: false,
+    cacheSize,
     source: new ImageTileSource({
       url: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
       tileSize: 512,
@@ -182,18 +184,21 @@ function createHillshadeLayer(): WebGLTileLayer {
   });
 }
 
-const PLACE_STYLES: Record<string, {minZoom: number; style: Style}> = {
-  city: {minZoom: MAPANT_MIN_ZOOM, style: placeStyle('bold 15px', '#1b1b1b')},
-  town: {minZoom: MAPANT_MIN_ZOOM, style: placeStyle('bold 13px', '#1b1b1b')},
-  village: {minZoom: 13, style: placeStyle('12px', '#333333')},
-};
+/** Label sizes in CSS pixels, multiplied by `scale` for print (see print.ts). */
+function placeStyles(scale: number): Record<string, {minZoom: number; style: Style}> {
+  return {
+    city: {minZoom: MAPANT_MIN_ZOOM, style: placeStyle('bold', 15, '#1b1b1b', scale)},
+    town: {minZoom: MAPANT_MIN_ZOOM, style: placeStyle('bold', 13, '#1b1b1b', scale)},
+    village: {minZoom: 13, style: placeStyle('normal', 12, '#333333', scale)},
+  };
+}
 
-function placeStyle(font: string, color: string): Style {
+function placeStyle(weight: string, sizePx: number, color: string, scale: number): Style {
   return new Style({
     text: new Text({
-      font: `${font} system-ui, sans-serif`,
+      font: `${weight} ${sizePx * scale}px system-ui, sans-serif`,
       fill: new Fill({color}),
-      stroke: new Stroke({color: 'rgba(255, 255, 255, 0.9)', width: 3.5}),
+      stroke: new Stroke({color: 'rgba(255, 255, 255, 0.9)', width: 3.5 * scale}),
       overflow: true,
     }),
   });
@@ -201,7 +206,7 @@ function placeStyle(font: string, color: string): Style {
 
 /** Rough zoom level for a resolution in EPSG:3857, enough to pick a label size. */
 function zoomFor(resolution: number): number {
-  return Math.log2(156543.03392804097 / resolution);
+  return Math.log2(MAX_RESOLUTION / resolution);
 }
 
 /**
@@ -209,7 +214,8 @@ function zoomFor(resolution: number): number {
  * OpenStreetMap by scripts/fetch-places.mjs. Only shown where the orienteering
  * map is – below that the OSM background brings its own labels.
  */
-function createPlacesLayer(): VectorLayer<VectorSource> {
+function createPlacesLayer(styleScale: number): VectorLayer<VectorSource> {
+  const styles = placeStyles(styleScale);
   return new VectorLayer({
     minZoom: MAPANT_MIN_ZOOM - 0.001,
     declutter: true,
@@ -219,8 +225,10 @@ function createPlacesLayer(): VectorLayer<VectorSource> {
       attributions: OSM_ATTRIBUTION,
     }),
     style: (feature: FeatureLike, resolution: number) => {
-      const entry = PLACE_STYLES[feature.get('place') as string];
-      if (!entry || zoomFor(resolution) < entry.minZoom) {
+      const entry = styles[feature.get('place') as string];
+      // Which labels are shown follows the zoom the paper shows, not the finer
+      // resolution the print map renders at.
+      if (!entry || zoomFor(resolution * styleScale) < entry.minZoom) {
         return undefined;
       }
       entry.style.getText()?.setText(feature.get('name') as string);
@@ -229,12 +237,19 @@ function createPlacesLayer(): VectorLayer<VectorSource> {
   });
 }
 
-/** Tile boundaries of the orienteering map, as in the original prototype. */
-function createGridLayer(): TileLayer<TileDebug> {
+/**
+ * Tile boundaries of the orienteering map, as in the original prototype. Which
+ * level is drawn follows the view resolution, so a print – which renders finer
+ * than the paper reads – is capped at the level its scale shows on screen.
+ */
+function createGridLayer(screenResolution?: number): TileLayer<TileDebug> {
+  const maxZoom = screenResolution
+    ? Math.min(MAPANT_MAX_ZOOM, Math.round(zoomFor(screenResolution)))
+    : MAPANT_MAX_ZOOM;
   return new TileLayer({
     visible: false,
     source: new TileDebug({
-      tileGrid: createXYZ({maxZoom: MAPANT_MAX_ZOOM}),
+      tileGrid: createXYZ({maxZoom}),
     }),
   });
 }
@@ -259,12 +274,23 @@ export function attributionText(layers: AppLayers): string {
   return notices.map((notice) => notice.replace(/<[^>]*>/g, '')).join(' | ');
 }
 
-export function createLayers(): AppLayers {
+/**
+ * Everything the print map has to pass down to render for paper instead of a
+ * screen; see `PrintLayerOptions` in print.ts.
+ */
+export interface LayerOptions {
+  styleScale?: number;
+  screenResolution?: number;
+  tileCacheSize?: number;
+}
+
+export function createLayers(options: LayerOptions = {}): AppLayers {
+  const styleScale = options.styleScale ?? 1;
   return {
     osm: createOsmLayer(),
-    mapant: createMapantLayer(),
-    hillshade: createHillshadeLayer(),
-    places: createPlacesLayer(),
-    grid: createGridLayer(),
+    mapant: createMapantLayer(options.tileCacheSize),
+    hillshade: createHillshadeLayer(options.tileCacheSize),
+    places: createPlacesLayer(styleScale),
+    grid: createGridLayer(options.screenResolution),
   };
 }

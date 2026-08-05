@@ -42,15 +42,26 @@ plugin in `vite.config.ts`.
 [jsPDF](https://github.com/parallax/jsPDF) (loaded on demand – it is larger than the rest of the app).
 
 * A4, portrait or landscape, at 1:4000 / 1:7500 / 1:10 000 / 1:15 000.
-* 300 dpi, losslessly compressed. That is where the archive itself runs out of detail: at 1:10 000 the
-  page asks for 0.85 m per pixel and the z18 tiles hold about 0.4 m.
-* The print map uses `pixelRatio = 300/96`, so label sizes and line widths keep the proportions they
-  have on screen while tiles are fetched fine enough for the paper.
+* 600 dpi, losslessly compressed. That is roughly where the archive runs out of detail: at 1:10 000 the
+  page asks for 0.42 m per pixel and the z18 tiles hold about 0.4 m.
+* The print map renders at `pixelRatio = 1` into a viewport the size of the paper *in output pixels* –
+  4961 × 6850 for an A4 page. This is what makes the print sharp, and it is easy to get wrong:
+  OpenLayers picks the tile zoom level from the view resolution alone and then scales the tiles up by
+  the pixel ratio, so a map at `pixelRatio = dpi/96` fetches the tiles a *screen* would use and
+  magnifies them – 600 dpi of paper carrying 96 dpi of map. The price is that style sizes given in CSS
+  pixels no longer scale by themselves, so the layers are handed a `styleScale` to multiply fonts,
+  stroke widths and symbol radii by (`PrintLayerOptions` in `src/print.ts`).
+* Safari caps a canvas at about 16.7 million pixels, well under an A4 page at 600 dpi, and silently
+  ignores drawing beyond it. The export probes a canvas of the size it needs and steps down to 400 or
+  300 dpi if the browser will not hand one out.
 * The scale is exact: the view resolution is derived from the paper size and corrected for the local
   Web Mercator distortion, so a ruler on the print agrees with the stated scale.
 * A footer strip carries the scale and the copyright notices of the layers that were printed.
 
-Rendering a full page fetches several hundred tiles, so an export takes a few seconds to a minute.
+A full page is 300 to 650 tiles, around 20 MB from the archive, and lands at 25–45 MB of PDF. Expect
+some seconds on a fast connection and a couple of minutes on a slow one; the tile cache of the print
+layers is sized for the page, since the 512 tiles OpenLayers keeps by default are not enough to hold
+one.
 
 ## Drawings in the share link
 
