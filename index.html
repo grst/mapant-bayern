@@ -84,21 +84,56 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.4.1/dist/pmtiles.js"></script>
     <script>
         // Create OpenStreetMap background layer
         const osmLayer = new ol.layer.Tile({
             source: new ol.source.OSM()
         });
 
+        // MapAnt tiles live in a single PMTiles archive, read over HTTP range requests
+        const PMTILES_URL = 'https://mapant-tiles.orienteering-allgaeu.de/mapant-bayern.pmtiles';
+        const TILE_MIN_ZOOM = 12;
+        const TILE_MAX_ZOOM = 18;
+        // Coverage of the archive (Bavaria), as read from its tile directory
+        const DATA_EXTENT = ol.proj.transformExtent(
+            [8.96484, 47.21957, 13.88672, 50.62507], 'EPSG:4326', 'EPSG:3857'
+        );
+        // 1x1 transparent PNG, used for tiles the archive does not contain
+        const EMPTY_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        // The ol.js bundle does not expose ol.TileState; 3 is its ERROR value
+        const TILE_STATE_ERROR = 3;
+
+        const pmtilesArchive = new pmtiles.PMTiles(PMTILES_URL);
+
         // Create the custom tile layer
         const customTileLayer = new ol.layer.Tile({
+            extent: DATA_EXTENT,
             source: new ol.source.XYZ({
-                url: 'tiles/{z}/{x}/{y}.png',
-                minZoom: 11,
-                maxZoom: 18,
+                // Never fetched: the template only carries z/x/y into tileLoadFunction
+                url: '{z}/{x}/{y}',
+                minZoom: TILE_MIN_ZOOM,
+                maxZoom: TILE_MAX_ZOOM,
                 tileLoadFunction: function(imageTile, src) {
-                    // Handle CORS issues for local files
-                    imageTile.getImage().src = src;
+                    const coords = src.match(/(\d+)\/(\d+)\/(\d+)$/);
+                    const image = imageTile.getImage();
+                    pmtilesArchive
+                        .getZxy(Number(coords[1]), Number(coords[2]), Number(coords[3]))
+                        .then(function(tile) {
+                            if (!tile) {
+                                image.src = EMPTY_TILE;
+                                return;
+                            }
+                            const objectUrl = URL.createObjectURL(new Blob([tile.data]));
+                            image.addEventListener(
+                                'load', function() { URL.revokeObjectURL(objectUrl); }, { once: true }
+                            );
+                            image.src = objectUrl;
+                        })
+                        .catch(function(error) {
+                            console.error('PMTiles tile load failed for ' + src, error);
+                            imageTile.setState(TILE_STATE_ERROR);
+                        });
                 }
             }),
             opacity: 1 // Make custom tiles slightly transparent to see OSM underneath
@@ -126,7 +161,8 @@
         const initialCenter = (urlParams.lat && urlParams.lon) 
             ? ol.proj.fromLonLat([parseFloat(urlParams.lon), parseFloat(urlParams.lat)])
             : ol.proj.fromLonLat([10.2142, 47.5635]); // Immenstadt im Allgäu coordinates
-        const initialZoom = urlParams.zoom ? parseInt(urlParams.zoom) : 11;
+        // Default to the archive's lowest zoom so the map tiles are visible on load
+        const initialZoom = urlParams.zoom ? parseInt(urlParams.zoom) : TILE_MIN_ZOOM;
 
         // Create the map with OSM as background and custom tiles on top
         const map = new ol.Map({
