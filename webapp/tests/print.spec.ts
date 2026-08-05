@@ -67,18 +67,19 @@ test('exports an A4 PDF of the centred area at print density', async ({page}, te
  * at its finest level (z16) instead of the z14 a 96 dpi view would settle for.
  */
 test('fetches tiles at the density of the paper, not of the screen', async ({page}) => {
-  // Compositing a 600 dpi page of shaded relief is slow in a headless browser.
-  test.setTimeout(240_000);
   const zooms: number[] = [];
   await stubTiles(page, zooms);
   await openPrintPanel(page, 'h');
 
-  // Only what the print map asks for.
+  // Once the live map has its own tiles, only the print map's requests are left.
+  await page.waitForTimeout(500);
   zooms.length = 0;
-  const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
   await page.locator('.print-export').click();
-  await downloadPromise;
 
-  expect(zooms.length).toBeGreaterThan(0);
+  // A page holds around fifty terrain tiles; a dozen is enough to see which level
+  // they come from. The export is left to run on: compositing a 600 dpi page of
+  // shaded relief takes minutes in a headless browser and the zoom level – all
+  // this test is about – has been decided by now.
+  await expect.poll(() => zooms.length, {timeout: 60_000}).toBeGreaterThan(12);
   expect([...new Set(zooms)]).toEqual([16]);
 });
