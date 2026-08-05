@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="4" fill="#ffffff" />
+  <!-- Orienteering control marker -->
+  <path d="M4 4h12v12H4z" fill="#ffffff" />
+  <path d="M16 4h12v12H16z" fill="#e2136e" />
+  <path d="M4 16h12v12H4z" fill="#e2136e" />
+  <path d="M16 16h12v12H16z" fill="#ffffff" />
+  <rect x="4" y="4" width="24" height="24" fill="none" stroke="#1b1b1b" stroke-width="1.5" />
+</svg>

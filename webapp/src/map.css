@@ -1,0 +1,140 @@
+/* OpenLayers' own stylesheet first: everything below overrides it, and
+   bundling it here keeps that order in the production build too. */
+@import 'ol/ol.css';
+
+/* The OpenLayers attribution control renders into the footer, so it has to
+   shed its floating-panel styling. */
+.footer .ol-attribution {
+  position: static;
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.footer .ol-attribution ul {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  text-shadow: none;
+}
+
+.footer .ol-attribution li {
+  display: inline;
+}
+
+.footer .ol-attribution li:not(:last-child)::after {
+  margin: 0 0.3rem;
+  color: var(--border);
+  content: "|";
+}
+
+/* ------------------------------------------------------- map controls */
+
+.ol-control button {
+  font-family: var(--font);
+}
+
+.ol-scale-line {
+  left: auto;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  background: rgb(255 255 255 / 70%);
+}
+
+.ol-scale-line-inner {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+/* Full screen, layers and share share one column in the top right corner. */
+.map-control-stack {
+  top: 0.5em;
+  right: 0.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  padding: 0;
+}
+
+.map-control-stack .ol-control {
+  position: static;
+}
+
+.layer-panel {
+  position: relative;
+}
+
+.layer-panel-body {
+  position: absolute;
+  top: 0;
+  right: calc(1.375em + 4px + 0.4rem);
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.layer-panel-body h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.layer-panel-body label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.15rem 0;
+  cursor: pointer;
+}
+
+.draw-toolbar {
+  bottom: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  gap: 2px;
+}
+
+.draw-toolbar button[aria-pressed="true"] {
+  background: var(--accent);
+}
+
+.draw-hint {
+  align-self: center;
+  margin-left: 0.4rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 90%);
+  box-shadow: var(--shadow);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.measure-tooltip {
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 75%);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.control-icon {
+  display: block;
+  width: 1.1em;
+  height: 1.1em;
+  margin: 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

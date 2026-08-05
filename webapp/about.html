@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="About Mapant Bayern – data sources, licences and how the map is made." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title data-i18n="title.about">About – Mapant Bayern</title>
+  </head>
+  <body class="page-about">
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="navbar">
+      <button
+        class="nav-toggle"
+        id="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="site-nav"
+        data-i18n-label="nav.menu"
+      >
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <a class="brand" href="/">Mapant Bayern</a>
+      <nav class="site-nav" id="site-nav">
+        <a href="/" data-i18n="nav.map">Map</a>
+        <a href="https://github.com/grst/mapant-bayern" target="_blank" rel="noopener" data-i18n="nav.source">
+          Source on GitHub
+        </a>
+        <a href="https://mapant.net" target="_blank" rel="noopener" data-i18n="nav.otherMaps">Other mapant maps</a>
+        <div class="lang-switch" id="lang-switch" role="group" data-i18n-label="nav.language">
+          <button type="button" data-lang="de">DE</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </header>
+    <div class="nav-backdrop" id="nav-backdrop" hidden></div>
+
+    <main class="content-wrap">
+      <article class="prose" id="content"></article>
+      <p class="prose back-link"><a href="/" data-i18n="about.back">Back to the map</a></p>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-static">
+        <span data-i18n-html="footer.madeWith"></span>
+        <span class="sep">|</span>
+        <a href="https://orienteering-allgaeu.de/impressum/" target="_blank" rel="noopener" data-i18n="footer.impressum">
+          Impressum
+        </a>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/about.ts"></script>
+  </body>
+</html>
