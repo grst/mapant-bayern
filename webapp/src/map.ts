@@ -5,6 +5,7 @@ import Control from 'ol/control/Control';
 import FullScreen from 'ol/control/FullScreen';
 import ScaleLine from 'ol/control/ScaleLine';
 import Zoom from 'ol/control/Zoom';
+import {defaults as defaultInteractions} from 'ol/interaction/defaults';
 import {fromLonLat} from 'ol/proj';
 import {t} from './i18n';
 import type {Key} from './i18n/en';
@@ -49,6 +50,11 @@ export function createMap(target: string, view: {zoom: number; lat: number; lon:
     target,
     layers: [layers.osm, layers.mapant, layers.hillshade, layers.places, layers.grid],
     controls,
+    // The map container has a `tabindex` so it can be panned with the keyboard,
+    // and a Map built without explicit interactions then only drags and wheel
+    // zooms while that container has the focus. On a touch screen that costs a
+    // tap before the map reacts to a swipe at all, so the focus condition goes.
+    interactions: defaultInteractions({onFocusOnly: false}),
     view: new View({
       center: fromLonLat([view.lon, view.lat]),
       zoom: view.zoom,
