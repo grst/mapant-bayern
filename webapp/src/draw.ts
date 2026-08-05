@@ -29,25 +29,44 @@ import {formatNumber} from './i18n';
 
 const ACCENT = '#e2136e';
 
-const geometryStyle = new Style({
-  stroke: new Stroke({color: ACCENT, width: 3}),
-  fill: new Fill({color: 'rgba(226, 19, 110, 0.12)'}),
-  image: new CircleStyle({
-    radius: 4,
-    fill: new Fill({color: ACCENT}),
-  }),
-});
+/**
+ * The look of a finished sketch. Sizes are CSS pixels, multiplied by `scale` so
+ * the print map – which renders at one canvas pixel per pixel of output – draws
+ * them at the width they have on screen (see print.ts).
+ */
+function createDrawingStyle(scale: number): (feature: FeatureLike) => Style[] {
+  const geometryStyle = new Style({
+    stroke: new Stroke({color: ACCENT, width: 3 * scale}),
+    fill: new Fill({color: 'rgba(226, 19, 110, 0.12)'}),
+    image: new CircleStyle({
+      radius: 4 * scale,
+      fill: new Fill({color: ACCENT}),
+    }),
+  });
 
-const labelStyle = new Style({
-  text: new Text({
-    font: 'bold 12px system-ui, sans-serif',
-    fill: new Fill({color: '#1b1b1b'}),
-    backgroundFill: new Fill({color: 'rgba(255, 255, 255, 0.85)'}),
-    padding: [2, 4, 2, 4],
-    offsetY: -12,
-    overflow: true,
-  }),
-});
+  const labelStyle = new Style({
+    text: new Text({
+      font: `bold ${12 * scale}px system-ui, sans-serif`,
+      fill: new Fill({color: '#1b1b1b'}),
+      backgroundFill: new Fill({color: 'rgba(255, 255, 255, 0.85)'}),
+      padding: [2 * scale, 4 * scale, 2 * scale, 4 * scale],
+      offsetY: -12 * scale,
+      overflow: true,
+    }),
+  });
+
+  return (feature: FeatureLike) => {
+    const geometry = feature.getGeometry();
+    const styles = [geometryStyle];
+    const point = geometry ? labelPoint(geometry as Geometry) : undefined;
+    if (point) {
+      labelStyle.setGeometry(point);
+      labelStyle.getText()?.setText(measure(geometry as Geometry));
+      styles.push(labelStyle);
+    }
+    return styles;
+  };
+}
 
 export function formatLength(line: LineString): string {
   const metres = getLength(line);
@@ -99,18 +118,6 @@ function snapGeometry(geometry: Geometry): void {
   }
 }
 
-function drawingStyle(feature: FeatureLike): Style[] {
-  const geometry = feature.getGeometry();
-  const styles = [geometryStyle];
-  const point = geometry ? labelPoint(geometry as Geometry) : undefined;
-  if (point) {
-    labelStyle.setGeometry(point);
-    labelStyle.getText()?.setText(measure(geometry as Geometry));
-    styles.push(labelStyle);
-  }
-  return styles;
-}
-
 export interface DrawTools {
   layer: VectorLayer<VectorSource>;
   setMode(mode: DrawingType | null): void;
@@ -125,14 +132,14 @@ export interface DrawTools {
    * A second layer over the same drawings. Layers belong to one map at a time,
    * so the print map needs its own – sharing the source keeps them in step.
    */
-  printCopy(): VectorLayer<VectorSource>;
+  printCopy(styleScale: number): VectorLayer<VectorSource>;
   /** Re-renders the measurement labels, e.g. after a language switch. */
   refresh(): void;
 }
 
 export function createDrawTools(map: Map): DrawTools {
   const source = new VectorSource();
-  const layer = new VectorLayer({source, style: drawingStyle});
+  const layer = new VectorLayer({source, style: createDrawingStyle(1)});
 
   const modeListeners = new Set<(mode: DrawingType | null) => void>();
   const changeListeners = new Set<() => void>();
@@ -245,7 +252,7 @@ export function createDrawTools(map: Map): DrawTools {
       }
     },
 
-    printCopy: () => new VectorLayer({source, style: drawingStyle}),
+    printCopy: (styleScale) => new VectorLayer({source, style: createDrawingStyle(styleScale)}),
 
     // Units and decimal separators are language dependent, so the labels have to
     // be re-rendered when the language changes.

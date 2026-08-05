@@ -8,7 +8,7 @@ import {createDrawTools} from './draw';
 import {applyTranslations, getLang, onLangChange, setLang, t} from './i18n';
 import {attributionText, createLayers, MAPANT_MIN_ZOOM} from './layers';
 import {createMap} from './map';
-import {exportPdf} from './print';
+import {exportPdf, type PrintLayerOptions} from './print';
 import {DEFAULT_VIEW, readState, writeState, type AppState} from './urlstate';
 import {createDrawToolbar} from './ui/drawtoolbar';
 import {initZoomHint} from './ui/hint';
@@ -65,12 +65,19 @@ applyState(initialState);
  * Layers for the print map. Layers belong to a single map, so they are rebuilt
  * from scratch; the visibility of the live ones is what the user asked to see.
  */
-function printLayers(): BaseLayer[] {
-  const fresh = createLayers();
+function printLayers(options: PrintLayerOptions): BaseLayer[] {
+  const fresh = createLayers(options);
   for (const key of ['osm', 'mapant', 'hillshade', 'places', 'grid'] as const) {
     fresh[key].setVisible(layers[key].getVisible());
   }
-  return [fresh.osm, fresh.mapant, fresh.hillshade, fresh.places, fresh.grid, tools.printCopy()];
+  return [
+    fresh.osm,
+    fresh.mapant,
+    fresh.hillshade,
+    fresh.places,
+    fresh.grid,
+    tools.printCopy(options.styleScale),
+  ];
 }
 
 const preview = createPrintPreview();
@@ -104,7 +111,7 @@ map.addControl(
           await exportPdf({
             ...settings,
             center,
-            layers: printLayers(),
+            createLayers: printLayers,
             attribution: attributionText(layers),
             fileName: `mapant-bayern_1-${settings.scale}.pdf`,
           });
