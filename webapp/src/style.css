@@ -1,0 +1,348 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1b1b1b;
+  --muted: #5a5a5a;
+  /* Bavarian blue, RAL 5015. White on it reaches 5:1, so it also serves as the
+     link colour on white. */
+  --accent: #3172ad;
+  --accent-fg: #ffffff;
+  --border: #d6d6d6;
+  --shadow: 0 2px 6px rgb(0 0 0 / 20%);
+  --navbar-height: 3rem;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  /* dvh keeps the map fully visible while mobile browser bars come and go. */
+  height: 100dvh;
+  overflow: hidden;
+  color: var(--fg);
+  background: var(--bg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+a {
+  color: var(--accent);
+}
+
+.skip-link {
+  position: absolute;
+  top: -3rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+/* ---------------------------------------------------------------- navbar */
+
+.navbar {
+  display: flex;
+  position: relative;
+  z-index: 10; /* above the mobile drawer, so the hamburger stays clickable */
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.75rem;
+  height: var(--navbar-height);
+  padding: 0 0.75rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.brand {
+  color: var(--accent-fg);
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-nav {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 1.25rem;
+  justify-content: flex-end;
+}
+
+.site-nav a {
+  color: var(--accent-fg);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-nav a:hover,
+.site-nav a:focus {
+  text-decoration: underline;
+}
+
+.lang-switch {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 60%);
+  border-radius: 4px;
+}
+
+.lang-switch button {
+  padding: 0.2rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--accent-fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.lang-switch button[aria-pressed="true"] {
+  background: var(--accent-fg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-toggle {
+  display: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nav-toggle-bars,
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  display: block;
+  position: relative;
+  width: 1.35rem;
+  height: 2px;
+  margin: 0 auto;
+  background: var(--accent-fg);
+}
+
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  position: absolute;
+  content: "";
+}
+
+.nav-toggle-bars::before {
+  top: -6px;
+}
+
+.nav-toggle-bars::after {
+  top: 6px;
+}
+
+.nav-backdrop {
+  position: fixed;
+  z-index: 8;
+  inset: 0;
+  background: rgb(0 0 0 / 35%);
+}
+
+/* ------------------------------------------------------------------- map */
+
+.map-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  background: #eef1f2;
+}
+
+.zoom-hint {
+  position: absolute;
+  z-index: 5;
+  top: 0.75rem;
+  left: 50%;
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.35rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.footer a {
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+.footer .sep {
+  margin: 0 0.3rem;
+  color: var(--border);
+}
+
+/* ----------------------------------------------------------------- toast */
+
+.toast {
+  position: fixed;
+  z-index: 20;
+  bottom: 3.5rem;
+  left: 50%;
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 82%);
+  color: #fff;
+  font-size: 0.85rem;
+  transform: translateX(-50%);
+}
+
+/* ------------------------------------------------------------ about page */
+
+.page-about {
+  overflow: auto;
+}
+
+.content-wrap {
+  flex: 1 1 auto;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+.prose {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.prose h1 {
+  margin-top: 0;
+  font-size: 1.8rem;
+}
+
+.prose h2 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+}
+
+.prose ul {
+  padding-left: 1.2rem;
+}
+
+.prose li {
+  margin: 0.3rem 0;
+}
+
+.prose code {
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background: #f1f1f1;
+  font-size: 0.9em;
+}
+
+.prose pre {
+  overflow-x: auto;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background: #f1f1f1;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose img {
+  max-width: 100%;
+}
+
+.prose table {
+  border-collapse: collapse;
+}
+
+.prose th,
+.prose td {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+}
+
+.back-link {
+  margin-top: 2rem;
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 43rem) {
+  .nav-toggle {
+    display: block;
+  }
+
+  .site-nav {
+    position: fixed;
+    z-index: 9;
+    top: var(--navbar-height);
+    bottom: 0;
+    left: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 1rem;
+    width: min(17rem, 80vw);
+    padding: 1.25rem;
+    background: var(--accent);
+    box-shadow: var(--shadow);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+  }
+
+  .site-nav.open {
+    transform: translateX(0);
+  }
+
+  .footer {
+    justify-content: flex-start;
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-nav {
+    transition: none;
+  }
+}
