@@ -86,10 +86,10 @@
     <script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.4.1/dist/pmtiles.js"></script>
     <script>
-        // Create OpenStreetMap background layer
-        const osmLayer = new ol.layer.Tile({
-            source: new ol.source.OSM()
-        });
+        // // Create OpenStreetMap background layer
+        // const osmLayer = new ol.layer.Tile({
+        //     source: new ol.source.OSM()
+        // });
 
         // MapAnt tiles live in a single PMTiles archive, read over HTTP range requests
         const PMTILES_URL = 'https://mapant-tiles.orienteering-allgaeu.de/mapant-bayern.pmtiles';
@@ -168,7 +168,6 @@
         const map = new ol.Map({
             target: 'map',
             layers: [
-                osmLayer,      // Background layer
                 customTileLayer, // Custom tiles overlay
                 debugLayer     // Debug grid showing tile boundaries
             ],
