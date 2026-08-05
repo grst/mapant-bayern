@@ -40,15 +40,29 @@ const MAPANT_ATTRIBUTION = [
 const MAPTERHORN_ATTRIBUTION =
   '© <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>';
 
+/** Highest zoom level Mapterhorn's terrain tiles are available at. */
+const MAPTERHORN_MAX_ZOOM = 16;
+
+/** EPSG:3857 resolutions: one 256 px tile at zoom 0 spans the whole world. */
+const MAX_RESOLUTION = 156543.03392804097;
+
 /**
- * Background map. Capped at z11 so nothing is fetched from openstreetmap.org
- * once the orienteering map takes over; the overzoomed z11 tiles still give
- * context outside the archive's coverage.
+ * View resolution at which the DEM stops gaining detail. The tiles are 512 px, so
+ * two texels span one 256 px-tile resolution at the same zoom level.
+ */
+const MAPTERHORN_MIN_RESOLUTION = MAX_RESOLUTION / 2 ** MAPTERHORN_MAX_ZOOM;
+
+/**
+ * Background map, shown only below the orienteering map's zoom levels. The layer
+ * hands over at exactly the same threshold the orienteering map takes over at
+ * (maxZoom is inclusive, minZoom exclusive), so nothing is ever fetched from
+ * openstreetmap.org while the orienteering map is on screen.
  */
 function createOsmLayer(): TileLayer<OSM> {
   return new TileLayer({
+    maxZoom: MAPANT_MIN_ZOOM - 0.001,
     // Same string as the other layers use, so the footer lists it only once.
-    source: new OSM({maxZoom: 11, attributions: OSM_ATTRIBUTION}),
+    source: new OSM({maxZoom: MAPANT_MIN_ZOOM - 1, attributions: OSM_ATTRIBUTION}),
   });
 }
 
@@ -115,10 +129,15 @@ function createHillshadeLayer(): WebGLTileLayer {
     -32768,
   ];
 
-  // Horizontal distance between the two sampled texels. The tiles are 512 px
-  // for the same extent a 256 px tile would cover, so one texel is half a view
-  // pixel and two texels add up to a single view resolution.
-  const dp = ['resolution'];
+  // Horizontal distance between the two sampled texels. The tiles are 512 px for
+  // the same extent a 256 px tile would cover, so one texel is half a view pixel
+  // and two texels add up to one view resolution.
+  //
+  // Clamped at the resolution of the DEM's highest zoom level: above z16 the
+  // tiles are overzoomed, so the sampled texels stay the same distance apart on
+  // the ground while the view resolution keeps halving. Without the clamp the
+  // terrain would look twice as steep at z17 and four times as steep at z18.
+  const dp = ['clamp', ['resolution'], MAPTERHORN_MIN_RESOLUTION, MAX_RESOLUTION];
   const dzdx = ['/', ['-', elevation(1, 0), elevation(-1, 0)], dp];
   const dzdy = ['/', ['-', elevation(0, 1), elevation(0, -1)], dp];
   const slope = ['atan', ['sqrt', ['+', ['^', dzdx, 2], ['^', dzdy, 2]]]];
@@ -131,21 +150,34 @@ function createHillshadeLayer(): WebGLTileLayer {
     ['*', ['cos', sunEl], ['sin', slope], ['cos', ['-', sunAz, aspect]]],
   ];
 
+  // Normalised so flat ground comes out at 1: dividing by the incidence on a
+  // horizontal surface (sin of the sun elevation) means level terrain is left
+  // untouched instead of being greyed over.
+  const shade = ['clamp', ['/', cosIncidence, ['sin', sunEl]], 0, 1];
+
+  // Painting black with alpha = 1 - shade is exactly a multiply blend: the
+  // result is base * shade. Slopes facing away from the sun darken, everything
+  // else keeps its colour, and the orienteering map stays saturated. Doing it
+  // in the shader rather than with mix-blend-mode keeps the layer composited
+  // together with all the others.
+  const multiply = ['color', 0, ['*', ['var', 'strength'], ['-', 1, shade]]];
+
   return new WebGLTileLayer({
-    opacity: 0.35,
     visible: false,
     source: new ImageTileSource({
       url: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
       tileSize: 512,
-      maxZoom: 16,
+      maxZoom: MAPTERHORN_MAX_ZOOM,
       // Explicit: ol/source/ImageTile leaves crossOrigin unset by default, and
       // WebGL cannot upload a non-CORS image as a texture.
       crossOrigin: 'anonymous',
       attributions: MAPTERHORN_ATTRIBUTION,
     }),
     style: {
-      variables: {sunEl: 45, sunAz: 315},
-      color: ['color', ['*', 255, cosIncidence]],
+      // sunAz 315 = light from the north west, the cartographic convention.
+      // strength scales the shading from 0 (off) to 1 (full multiply).
+      variables: {sunEl: 45, sunAz: 315, strength: 0.45},
+      color: multiply,
     },
   });
 }
@@ -213,6 +245,18 @@ export interface AppLayers {
   hillshade: WebGLTileLayer;
   places: VectorLayer<VectorSource>;
   grid: TileLayer<TileDebug>;
+}
+
+/**
+ * The notices that apply to what is currently drawn, as plain text for the PDF
+ * footer. Same strings as the on-screen attribution, with the links removed.
+ */
+export function attributionText(layers: AppLayers): string {
+  const notices = [...MAPANT_ATTRIBUTION];
+  if (layers.hillshade.getVisible()) {
+    notices.push(MAPTERHORN_ATTRIBUTION);
+  }
+  return notices.map((notice) => notice.replace(/<[^>]*>/g, '')).join(' | ');
 }
 
 export function createLayers(): AppLayers {

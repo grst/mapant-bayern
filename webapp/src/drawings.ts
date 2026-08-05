@@ -1,12 +1,56 @@
 import {deflateSync, inflateSync, strFromU8, strToU8} from 'fflate';
+// Explicit .js: this module is also imported outside the bundler, by the tests.
+import {fromLonLat, toLonLat} from 'ol/proj.js';
 
 /** 'l' = line string, 'p' = polygon (outer ring only). */
 export type DrawingType = 'l' | 'p';
 
 export interface Drawing {
   t: DrawingType;
-  /** lon/lat pairs, rounded to 5 decimals (~1 m). */
+  /** lon/lat pairs on the share grid (see DECIMALS). */
   c: [number, number][];
+}
+
+/**
+ * Coordinates are rounded before they go into the URL, which would otherwise
+ * carry 17 digits per number. 6 decimals is ~10 cm – far finer than anyone can
+ * draw, and short enough to keep links manageable.
+ */
+const DECIMALS = 6;
+
+/** Map coordinate (EPSG:3857) -> the rounded lon/lat pair stored in the URL. */
+export function toShareCoordinate(coordinate: number[]): [number, number] {
+  const [lon, lat] = toLonLat(coordinate);
+  return [round(lon), round(lat)];
+}
+
+/** The inverse: a stored lon/lat pair -> map coordinate. */
+export function fromShareCoordinate(pair: number[]): number[] {
+  return fromLonLat(pair);
+}
+
+/**
+ * Snaps a map coordinate onto the share grid. Finished drawings are snapped
+ * immediately, so the length or area shown on screen is exactly the one a shared
+ * link reproduces – rounding on the way out would otherwise change it slightly.
+ */
+export function snapToShareGrid(coordinate: number[]): number[] {
+  return fromShareCoordinate(toShareCoordinate(coordinate));
+}
+
+function round(value: number): number {
+  const factor = 10 ** DECIMALS;
+  return Math.round(value * factor) / factor;
+}
+
+/** Polygon rings are stored without their repeated closing coordinate. */
+export function closeRing(coordinates: number[][]): number[][] {
+  const first = coordinates[0];
+  const last = coordinates[coordinates.length - 1];
+  if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
+    return [...coordinates, first];
+  }
+  return coordinates;
 }
 
 function toBase64Url(bytes: Uint8Array): string {

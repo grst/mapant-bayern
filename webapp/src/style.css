@@ -2,7 +2,9 @@
   --bg: #ffffff;
   --fg: #1b1b1b;
   --muted: #5a5a5a;
-  --accent: #0a6b3d;
+  /* Bavarian blue, RAL 5015. White on it reaches 5:1, so it also serves as the
+     link colour on white. */
+  --accent: #3172ad;
   --accent-fg: #ffffff;
   --border: #d6d6d6;
   --shadow: 0 2px 6px rgb(0 0 0 / 20%);

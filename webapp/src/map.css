@@ -72,7 +72,7 @@
 .layer-panel-body {
   position: absolute;
   top: 0;
-  right: calc(1.375em + 4px + 0.4rem);
+  right: calc(2rem + 4px + 0.4rem);
   padding: 0.5rem 0.7rem;
   border-radius: 4px;
   background: var(--bg);
@@ -92,6 +92,110 @@
   align-items: center;
   padding: 0.15rem 0;
   cursor: pointer;
+}
+
+.print-panel {
+  position: relative;
+}
+
+/* The selectors below are scoped through .print-panel throughout: ol.css styles
+   every `.ol-control button` as a square icon button, which would otherwise win
+   on specificity and squash the form controls. */
+.print-panel-body {
+  position: absolute;
+  top: 0;
+  right: calc(2rem + 4px + 0.4rem);
+  width: 17rem;
+  padding: 0.6rem 0.75rem 0.75rem;
+  border-radius: 4px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+}
+
+.print-panel-body h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.print-field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+
+.print-field select {
+  padding: 0.15rem 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  font: inherit;
+}
+
+.print-orientation {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.print-panel .print-orientation button {
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.print-panel .print-orientation button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.print-area,
+.print-hint {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.print-panel .print-export {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.6rem 0 0;
+  padding: 0.4rem;
+  border: 0;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.print-panel .print-export[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* The print map renders off-screen at paper size; it must stay laid out, so it
+   cannot be display:none. */
+.print-map {
+  position: fixed;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .draw-toolbar {
@@ -127,10 +231,22 @@
   pointer-events: none;
 }
 
+/* Bigger than the OpenLayers defaults, which are hard to hit on a phone and easy
+   to miss on a busy orienteering map. Sized in rem, not em, so changing the font
+   size below only scales the glyph the full-screen and zoom controls draw as
+   text – not the button box. */
+.ol-control button.tool-button,
+.map-control-stack .ol-full-screen button,
+.ol-zoom button {
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.25rem;
+}
+
 .control-icon {
   display: block;
-  width: 1.1em;
-  height: 1.1em;
+  width: 1.3rem;
+  height: 1.3rem;
   margin: 0 auto;
   fill: none;
   stroke: currentColor;

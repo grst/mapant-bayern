@@ -6,7 +6,7 @@ import VectorSource from 'ol/source/Vector';
 import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import Polygon from 'ol/geom/Polygon';
-import {fromLonLat, toLonLat} from 'ol/proj';
+import {unByKey} from 'ol/Observable';
 import {getArea, getLength} from 'ol/sphere';
 import Fill from 'ol/style/Fill';
 import Stroke from 'ol/style/Stroke';
@@ -16,7 +16,15 @@ import CircleStyle from 'ol/style/Circle';
 import type Map from 'ol/Map';
 import type {FeatureLike} from 'ol/Feature';
 import type Geometry from 'ol/geom/Geometry';
-import type {Drawing, DrawingType} from './drawings';
+import type {EventsKey} from 'ol/events';
+import {
+  closeRing,
+  fromShareCoordinate,
+  snapToShareGrid,
+  toShareCoordinate,
+  type Drawing,
+  type DrawingType,
+} from './drawings';
 import {formatNumber} from './i18n';
 
 const ACCENT = '#e2136e';
@@ -78,6 +86,19 @@ function labelPoint(geometry: Geometry): Point | undefined {
   return undefined;
 }
 
+/**
+ * Moves a finished geometry onto the grid the share link stores, so what is
+ * measured on screen is exactly what a shared link measures. The shift is below
+ * a decimetre; the difference in a reported area would not be.
+ */
+function snapGeometry(geometry: Geometry): void {
+  if (geometry instanceof Polygon) {
+    geometry.setCoordinates(geometry.getCoordinates().map((ring) => ring.map(snapToShareGrid)));
+  } else if (geometry instanceof LineString) {
+    geometry.setCoordinates(geometry.getCoordinates().map(snapToShareGrid));
+  }
+}
+
 function drawingStyle(feature: FeatureLike): Style[] {
   const geometry = feature.getGeometry();
   const styles = [geometryStyle];
@@ -100,6 +121,11 @@ export interface DrawTools {
   setDrawings(drawings: Drawing[]): void;
   undo(): void;
   clear(): void;
+  /**
+   * A second layer over the same drawings. Layers belong to one map at a time,
+   * so the print map needs its own – sharing the source keeps them in step.
+   */
+  printCopy(): VectorLayer<VectorSource>;
   /** Re-renders the measurement labels, e.g. after a language switch. */
   refresh(): void;
 }
@@ -136,16 +162,25 @@ export function createDrawTools(map: Map): DrawTools {
     mode = next;
 
     if (mode) {
+      let sketchListener: EventsKey | undefined;
       interaction = new Draw({source, type: mode === 'p' ? 'Polygon' : 'LineString'});
       interaction.on('drawstart', (event) => {
         const geometry = event.feature.getGeometry();
-        geometry?.on('change', () => {
+        sketchListener = geometry?.on('change', () => {
           const point = labelPoint(geometry);
           tooltipElement.textContent = measure(geometry);
           tooltip.setPosition(point?.getCoordinates());
         });
       });
-      interaction.on('drawend', () => {
+      interaction.on('drawend', (event) => {
+        if (sketchListener) {
+          unByKey(sketchListener);
+          sketchListener = undefined;
+        }
+        const geometry = event.feature.getGeometry();
+        if (geometry) {
+          snapGeometry(geometry);
+        }
         tooltip.setPosition(undefined);
         // The feature is only in the source after this handler returns.
         setTimeout(emitChange, 0);
@@ -174,10 +209,10 @@ export function createDrawTools(map: Map): DrawTools {
         const geometry = feature.getGeometry();
         if (geometry instanceof Polygon) {
           // Drop the repeated closing coordinate; closeRing() puts it back.
-          return [{t: 'p', c: geometry.getCoordinates()[0].slice(0, -1).map(toLonLatPair)}];
+          return [{t: 'p', c: geometry.getCoordinates()[0].slice(0, -1).map(toShareCoordinate)}];
         }
         if (geometry instanceof LineString) {
-          return [{t: 'l', c: geometry.getCoordinates().map(toLonLatPair)}];
+          return [{t: 'l', c: geometry.getCoordinates().map(toShareCoordinate)}];
         }
         return [];
       }),
@@ -186,7 +221,7 @@ export function createDrawTools(map: Map): DrawTools {
       source.clear();
       source.addFeatures(
         drawings.map((drawing) => {
-          const coordinates = drawing.c.map((pair) => fromLonLat(pair));
+          const coordinates = drawing.c.map(fromShareCoordinate);
           return new Feature(
             drawing.t === 'p' ? new Polygon([closeRing(coordinates)]) : new LineString(coordinates),
           );
@@ -210,27 +245,10 @@ export function createDrawTools(map: Map): DrawTools {
       }
     },
 
-    // Units and decimal separators are language dependent, so the labels have
-      // to be re-rendered when the language changes.
+    printCopy: () => new VectorLayer({source, style: drawingStyle}),
+
+    // Units and decimal separators are language dependent, so the labels have to
+    // be re-rendered when the language changes.
     refresh: () => layer.changed(),
   };
-}
-
-function toLonLatPair(coordinate: number[]): [number, number] {
-  const [lon, lat] = toLonLat(coordinate);
-  return [round(lon), round(lat)];
-}
-
-/** 5 decimals is roughly a metre – plenty for a shared sketch, and much shorter. */
-function round(value: number): number {
-  return Math.round(value * 1e5) / 1e5;
-}
-
-function closeRing(coordinates: number[][]): number[][] {
-  const first = coordinates[0];
-  const last = coordinates[coordinates.length - 1];
-  if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
-    return [...coordinates, first];
-  }
-  return coordinates;
 }

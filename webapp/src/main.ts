@@ -3,16 +3,21 @@ import './style.css';
 import './map.css';
 
 import {fromLonLat, toLonLat} from 'ol/proj';
+import type BaseLayer from 'ol/layer/Base';
 import {createDrawTools} from './draw';
-import {applyTranslations, getLang, onLangChange, setLang} from './i18n';
-import {MAPANT_MIN_ZOOM} from './layers';
+import {applyTranslations, getLang, onLangChange, setLang, t} from './i18n';
+import {attributionText, createLayers, MAPANT_MIN_ZOOM} from './layers';
 import {createMap} from './map';
+import {exportPdf} from './print';
 import {DEFAULT_VIEW, readState, writeState, type AppState} from './urlstate';
 import {createDrawToolbar} from './ui/drawtoolbar';
 import {initZoomHint} from './ui/hint';
 import {createLayerPanel, type LayerToggle} from './ui/layerpanel';
 import {initNavbar} from './ui/navbar';
+import {createPrintPanel, type PrintSettings} from './ui/printpanel';
+import {createPrintPreview} from './ui/printpreview';
 import {createShareControl} from './ui/share';
+import {showToast} from './ui/toast';
 
 const initialState = readState();
 setLang(initialState.lang);
@@ -56,14 +61,70 @@ function applyState(state: AppState): void {
 
 applyState(initialState);
 
+/**
+ * Layers for the print map. Layers belong to a single map, so they are rebuilt
+ * from scratch; the visibility of the live ones is what the user asked to see.
+ */
+function printLayers(): BaseLayer[] {
+  const fresh = createLayers();
+  for (const key of ['osm', 'mapant', 'hillshade', 'places', 'grid'] as const) {
+    fresh[key].setVisible(layers[key].getVisible());
+  }
+  return [fresh.osm, fresh.mapant, fresh.hillshade, fresh.places, fresh.grid, tools.printCopy()];
+}
+
+const preview = createPrintPreview();
+map.addLayer(preview.layer);
+let printSettings: PrintSettings | null = null;
+
+function refreshPreview(): void {
+  const center = map.getView().getCenter();
+  if (printSettings && center) {
+    preview.show(center, printSettings.scale, printSettings.orientation);
+  } else {
+    preview.hide();
+  }
+}
+
 // Chrome created after the map, so the controls' labels are translated too.
 map.addControl(createLayerPanel(toggles, save, controlStack));
+map.addControl(
+  createPrintPanel(
+    {
+      onSettingsChange: (settings) => {
+        printSettings = settings;
+        refreshPreview();
+      },
+      onExport: async (settings) => {
+        const center = map.getView().getCenter();
+        if (!center) {
+          return;
+        }
+        try {
+          await exportPdf({
+            ...settings,
+            center,
+            layers: printLayers(),
+            attribution: attributionText(layers),
+            fileName: `mapant-bayern_1-${settings.scale}.pdf`,
+          });
+          showToast(t('print.ready'));
+        } catch (error) {
+          console.error('PDF export failed', error);
+          showToast(t('print.failed'), 4000);
+        }
+      },
+    },
+    controlStack,
+  ),
+);
 map.addControl(createShareControl(controlStack));
 map.addControl(createDrawToolbar(tools));
 applyTranslations();
 
 initZoomHint(map, MAPANT_MIN_ZOOM);
 
+map.on('moveend', refreshPreview);
 map.on('moveend', save);
 tools.onChange(save);
 onLangChange(() => {

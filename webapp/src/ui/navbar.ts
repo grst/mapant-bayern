@@ -41,6 +41,23 @@ export function initNavbar(): void {
 
   const markActive = () =>
     buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.lang === getLang())));
-  onLangChange(markActive);
+  onLangChange(() => {
+    markActive();
+    syncInternalLinks();
+  });
   markActive();
+  syncInternalLinks();
+}
+
+/**
+ * The chosen language lives in the URL only, so links between the map and the
+ * about page have to carry it – otherwise the other page falls back to the
+ * browser's language. Idempotent: only the hash is replaced.
+ */
+function syncInternalLinks(): void {
+  document.querySelectorAll<HTMLAnchorElement>('a[data-keep-lang]').forEach((link) => {
+    const url = new URL(link.href);
+    url.hash = `lang=${getLang()}`;
+    link.href = url.toString();
+  });
 }

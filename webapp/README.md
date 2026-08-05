@@ -25,22 +25,46 @@ The first test run needs the browser: `npx playwright install --with-deps chromi
 | `src/layers.ts` | all map layers and their copyright notices |
 | `src/map.ts` | map, view and OpenLayers controls |
 | `src/urlstate.ts` | the share link: `#map=zoom/lat/lon&layers=…&lang=…&d=…` |
-| `src/draw.ts` | measure/draw interactions and the drawing codec |
+| `src/draw.ts`, `src/drawings.ts` | measure/draw interactions, and the codec that puts them in the URL |
+| `src/print.ts` | PDF export: scale maths and the off-screen print map |
 | `src/i18n.ts`, `src/i18n/*.ts` | DE/EN strings, applied via `data-i18n` attributes |
-| `src/ui/*.ts` | navbar, layer panel, draw toolbar, share button, zoom hint |
+| `src/ui/*.ts` | navbar, layer panel, print panel, draw toolbar, share button, zoom hint |
 | `public/places.geojson` | town names overlay (generated, committed) |
 | `public/CNAME` | custom domain, copied into `dist/` by Vite |
 
-The about page renders the repository's root `README.md` (imported with Vite's `?raw`), and the
-screenshots it links to are served from `../img` by a small plugin in `vite.config.ts`.
+The about page renders the repository's root `README.md` – or `README.de.md` when German is selected –
+imported with Vite's `?raw`. The screenshots those files link to are served from `../img` by a small
+plugin in `vite.config.ts`.
+
+## PDF export
+
+`src/print.ts` builds a second, off-screen map at paper size and saves it through
+[jsPDF](https://github.com/parallax/jsPDF) (loaded on demand – it is larger than the rest of the app).
+
+* A4, portrait or landscape, at 1:4000 / 1:7500 / 1:10 000 / 1:15 000.
+* 300 dpi, losslessly compressed. That is where the archive itself runs out of detail: at 1:10 000 the
+  page asks for 0.85 m per pixel and the z18 tiles hold about 0.4 m.
+* The print map uses `pixelRatio = 300/96`, so label sizes and line widths keep the proportions they
+  have on screen while tiles are fetched fine enough for the paper.
+* The scale is exact: the view resolution is derived from the paper size and corrected for the local
+  Web Mercator distortion, so a ruler on the print agrees with the stated scale.
+* A footer strip carries the scale and the copyright notices of the layers that were printed.
+
+Rendering a full page fetches several hundred tiles, so an export takes a few seconds to a minute.
+
+## Drawings in the share link
+
+Finished sketches are snapped onto the ~10 cm grid the URL stores (`src/drawings.ts`), so the length or
+area shown on screen is exactly the one a shared link reproduces. `tests/drawings.spec.ts` pins that
+round trip.
 
 ## Data sources
 
 | Layer | Source | Zoom levels |
 | --- | --- | --- |
-| Background | OpenStreetMap standard tiles | 0–11 (overzoomed above) |
+| Background | OpenStreetMap standard tiles | below 12 only – nothing is fetched once the orienteering map takes over |
 | Orienteering map | `mapant-bayern.pmtiles` over HTTP range requests | 12–18 |
-| Hill shading | Mapterhorn terrarium DEM, shaded in WebGL | 0–16 (overzoomed above) |
+| Hill shading | Mapterhorn terrarium DEM, shaded in WebGL, multiplied over the map | 0–16 (overzoomed above, with the slope held at its z16 value) |
 | Town names | OpenStreetMap via Overpass | cities 7+, towns 10+, villages 13+ |
 
 ## Refreshing the town names
