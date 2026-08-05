@@ -18,7 +18,7 @@ and processed through the [mapant-nf](https://github.com/grst/mapant-nf) pipelin
 The full map can be downloaded in [pmtiles](https://docs.protomaps.com/pmtiles/) format (ca. 180 GB) and may
  be reused under [CC-BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.en) license: 
 
- * [mapant-bayern.pmtiles](https://mapant-tiles.orienteering-allgaeu.de/mapant-bayern.pmtiles).
+  * [mapant-bayern.pmtiles](https://mapant-tiles.orienteering-allgaeu.de/mapant-bayern.pmtiles).
 
 If you need a different license, feel free to [reach out](mailto:gregor@sturmcloud.org) to discuss. 
 
