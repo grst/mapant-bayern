@@ -48,6 +48,7 @@ export const en = {
   'footer.madeWith':
     'Made with <a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">karttapullautin</a> and <a href="https://github.com/grst/mapant-nf" target="_blank" rel="noopener">mapant-nf</a>',
   'footer.impressum': 'Impressum',
+  'footer.privacy': 'Privacy policy',
 
   'about.back': 'Back to the map',
 } as const;
