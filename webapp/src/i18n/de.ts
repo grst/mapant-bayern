@@ -50,6 +50,7 @@ export const de: Record<Key, string> = {
   'footer.madeWith':
     'Erstellt mit <a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">karttapullautin</a> und <a href="https://github.com/grst/mapant-nf" target="_blank" rel="noopener">mapant-nf</a>',
   'footer.impressum': 'Impressum',
+  'footer.privacy': 'Datenschutzerklärung',
 
   'about.back': 'Zurück zur Karte',
 };
