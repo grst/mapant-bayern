@@ -1,5 +1,8 @@
 # Hand-off: OCAD export in the mapant-bayern webapp
 
+> **Superseded.** This describes the first, bitmap-based prototype. The current plan builds on
+> @malpou's karttapullautin fork -- see `HANDOFF-malpou-stack.md` next to the repositories.
+
 This describes the "download this area as an editable OCAD file" feature, as prototyped on the
 branch **`feature/ocd-export`** in this working copy and validated against real vector tiles from
 `mapant-nf -profile test_immenstadt`.

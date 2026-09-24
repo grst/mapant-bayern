@@ -1,15 +1,13 @@
 /**
  * What each thing in the vector tiles becomes on an ISOM 2017-2 map.
  *
- * The tiles carry karttapullautin's own vocabulary – a layer name plus a class – and the symbol
- * numbers here are the ISOM 2017-2 ones present in the template, checked against it rather than
- * assumed. Where karttapullautin emits ISOM 2000 codes for the shapes it draws from OpenStreetMap,
- * the translation is OpenOrienteering Mapper's own crosswalk table
- * (`symbol sets/ISOM2000-ISOM 2017-2.crt`).
- *
- * Two of these mappings are judgement, not translation, and a mapper should expect to revisit
- * them: which green shade counts as slow running, walk or fight, and what undergrowth means. They
- * are the reason this is a starting point for field work rather than a finished map.
+ * Every tile feature carries karttapullautin's class as `layer` and the ISOM symbol it chose as
+ * `isom`. For the terrain that is already an ISOM 2017-2 number -- karttapullautin decides which
+ * green is slow running, walk or fight (`greenshadeisom`) and which undergrowth is which -- so it is
+ * used as it is. The OpenStreetMap shapes carry the ISOM 2000 codes of karttapullautin's rules file,
+ * and those are translated by OpenOrienteering Mapper's own crosswalk table
+ * (`symbol sets/ISOM2000-ISOM 2017-2.crt`). Every number here is checked against the template
+ * rather than assumed: a code it does not define is reported, not written.
  */
 
 import {OBJECT_TYPE_AREA, OBJECT_TYPE_LINE, OBJECT_TYPE_POINT} from './ocdwriter';
@@ -38,55 +36,31 @@ const point = (code: string, pointFrom?: Symbolisation['pointFrom']): Symbolisat
   pointFrom,
 });
 
-/** Contours, form lines and knolls, by karttapullautin's class name. */
+/**
+ * The terrain classes whose symbol is not simply their `isom`: a slope line is a point of 101.1,
+ * and a small depression, which karttapullautin draws as a ring, is the point symbol 111.
+ */
 const CURVES: Record<string, Symbolisation> = {
-  contour: line('101'),
-  contour_index: line('102'),
-  // ISOM has no separate depression contour: a depression is an ordinary contour that carries a
-  // slope line, which is exactly how karttapullautin draws it.
-  depression: line('101'),
-  depression_index: line('102'),
   slope_line: point('101.1', 'start-with-angle'),
-  // Drawn as a small ring, but the symbol for it is a point.
   small_depression: point('111', 'centroid'),
-  formline: line('103'),
-  formline_depression: line('103'),
-  dotknoll: point('109'),
-  uglydotknoll: point('109'),
-  udepression: point('111'),
-  uglyudepression: point('111'),
-  '1010': point('109'),
-  // karttapullautin's cliffs are the tick marks it draws across a cliff, not the cliff line, so
-  // these come out as a band of short lines that a mapper replaces with a drawn cliff. Keeping
-  // them is still worth more than dropping them: they are where the rock is.
-  cliff2: line('202'),
-  cliff3: line('201'),
-  cliff4: line('201'),
 };
 
-/**
- * Where each green shade lands. The shades are a density ramp, and ISOM's three passability
- * classes have to be cut out of it somewhere; these are the cuts, for the default eleven shades.
- */
-const GREEN_SLOW_RUNNING_MAX = 3;
-const GREEN_WALK_MAX = 6;
-
-function vegetationSymbol(klass: number): Symbolisation | null {
-  if (klass === 1) {
-    return area('401'); // open land
-  }
-  const shade = klass - 2; // classes start at 2 for the lightest green
-  if (shade < 0) {
-    return null;
-  }
-  if (shade <= GREEN_SLOW_RUNNING_MAX) {
-    return area('406'); // vegetation: slow running
-  }
-  if (shade <= GREEN_WALK_MAX) {
-    return area('408'); // vegetation: walk
-  }
-  return area('410'); // vegetation: fight
-}
+/** The terrain symbols by ISOM 2017-2 number, and what kind of object each is. */
+const TERRAIN: Record<string, Symbolisation> = {
+  '101': line('101'), // contour; a depression is a contour with slope lines in ISOM
+  '102': line('102'), // index contour
+  '103': line('103'), // form line
+  '109': point('109'), // small knoll
+  '111': point('111'), // small depression
+  '201': line('201'), // impassable cliff, as the cliff line karttapullautin chains
+  '202': line('202'), // cliff
+  '403': area('403'), // rough open land
+  '406': area('406'), // vegetation: slow running
+  '407': area('407'), // vegetation: slow running, good visibility (undergrowth)
+  '408': area('408'), // vegetation: walk
+  '409': area('409'), // vegetation: walk, good visibility (dense undergrowth)
+  '410': area('410'), // vegetation: fight
+};
 
 /** ISOM 2000 (what karttapullautin's vectorconf uses) to ISOM 2017-2, from Mapper's crosswalk. */
 const OSM_CODES: Record<string, Symbolisation> = {
@@ -112,43 +86,28 @@ const OSM_CODES: Record<string, Symbolisation> = {
 /**
  * The symbol for one tile feature, or null when it has none.
  *
- * `layer` is the vector tile layer, `properties` its attributes: `k` for a karttapullautin class,
- * `c` for a raster class, `isom` for a shape's own code.
+ * `layer` is the vector tile layer -- karttapullautin's output name -- and `properties` its
+ * attributes, of which `layer` (karttapullautin's class) and `isom` decide the symbol.
  */
 export function symbolFor(
   layer: string,
   properties: Record<string, string | number | boolean>,
 ): Symbolisation | null {
+  const isom = String(properties.isom ?? '');
   switch (layer) {
     case 'contours':
     case 'formlines':
-    case 'knolls':
+    case 'dotknolls':
     case 'cliffs':
-      return CURVES[String(properties.k)] ?? null;
-
     case 'vegetation':
-      return vegetationSymbol(Number(properties.c));
-
+    case 'yellow':
     case 'undergrowth':
-      // karttapullautin's undergrowth is a directional stripe overlay; ISOM's closest are the
-      // "normal running in one direction" variants. A guess, and flagged as one.
-      return Number(properties.c) >= 2 ? area('408.1') : area('406.1');
+      return CURVES[String(properties.layer)] ?? TERRAIN[isom] ?? null;
 
-    case 'water':
-      // 1 is water; 2 is the black detail drawn from the same image, which is a building.
-      return Number(properties.c) === 2 ? area('521') : area('301.1');
-
-    case 'blocks':
-      // Written only with detectbuildings=1, and drawn in the colour karttapullautin reserves for
-      // a detected building.
-      return area('521');
-
-    case 'osm_low':
-    case 'osm_high': {
-      // The T suffix marks karttapullautin's "on top of" variant of a symbol, same feature.
-      const code = String(properties.isom).replace(/T$/, '');
-      return OSM_CODES[code] ?? null;
-    }
+    case 'osm_areas':
+    case 'osm_lines':
+      // The T suffix marks karttapullautin's bridge/tunnel variant of a symbol, same feature.
+      return OSM_CODES[isom.replace(/T$/, '')] ?? null;
 
     default:
       return null;
