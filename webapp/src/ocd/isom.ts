@@ -69,6 +69,7 @@ const OSM_CODES: Record<string, Symbolisation> = {
   '306': line('305'), // small crossable watercourse
   '310': area('308'), // marsh
   '401': area('401'), // open land
+  '401.1': line('415'), // its edge, as karttapullautin draws it: distinct cultivation boundary
   '414': line('415'), // distinct cultivation boundary
   '503': line('502'), // side road
   '504': line('503'), // road
