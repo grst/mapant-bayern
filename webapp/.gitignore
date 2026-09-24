@@ -2,3 +2,6 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+
+# A local copy of a mapant-nf vector pyramid, for trying the OCAD export; see src/ocd/config.ts.
+public/vtiles/

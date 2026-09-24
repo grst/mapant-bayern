@@ -12,6 +12,8 @@ export interface PrintPanelOptions {
   /** Called with the current settings while the panel is open, null when closed. */
   onSettingsChange(settings: PrintSettings | null): void;
   onExport(settings: PrintSettings): Promise<void>;
+  /** The same area as an editable OCAD file, for someone who wants to survey from it. */
+  onExportOcd(settings: PrintSettings): Promise<void>;
 }
 
 const ORIENTATIONS: {value: Orientation; labelKey: 'print.portrait' | 'print.landscape'}[] = [
@@ -69,6 +71,11 @@ export function createPrintPanel(options: PrintPanelOptions, target: HTMLElement
   exportButton.type = 'button';
   panel.append(exportButton);
 
+  const ocdButton = i18nText('button', 'print.exportOcd', 'print-export-ocd');
+  ocdButton.type = 'button';
+  panel.append(ocdButton);
+  panel.append(i18nText('p', 'print.ocdHint', 'print-hint'));
+
   function refresh(): void {
     orientationButtons.forEach((orientationButton) =>
       orientationButton.setAttribute(
@@ -90,18 +97,29 @@ export function createPrintPanel(options: PrintPanelOptions, target: HTMLElement
     notify();
   });
 
-  exportButton.addEventListener('click', async () => {
-    exportButton.disabled = true;
-    exportButton.textContent = t('print.busy');
-    // The heavy lifting blocks the main thread in places; let the label paint first.
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    try {
-      await options.onExport({...settings});
-    } finally {
-      exportButton.disabled = false;
-      exportButton.textContent = t('print.export');
-    }
-  });
+  // Both exports do their heavy lifting on the main thread in places, so the busy label has to be
+  // given a frame to paint before it starts.
+  function wireExport(
+    button: HTMLElement & {disabled: boolean},
+    busyKey: 'print.busy' | 'print.ocdBusy',
+    labelKey: 'print.export' | 'print.exportOcd',
+    run: (settings: PrintSettings) => Promise<void>,
+  ): void {
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      button.textContent = t(busyKey);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      try {
+        await run({...settings});
+      } finally {
+        button.disabled = false;
+        button.textContent = t(labelKey);
+      }
+    });
+  }
+
+  wireExport(exportButton, 'print.busy', 'print.export', options.onExport);
+  wireExport(ocdButton, 'print.ocdBusy', 'print.exportOcd', options.onExportOcd);
 
   const setOpen = (open: boolean) => {
     panel.hidden = !open;

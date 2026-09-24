@@ -63,6 +63,53 @@ some seconds on a fast connection and a couple of minutes on a slow one; the til
 layers is sized for the page, since the 512 tiles OpenLayers keeps by default are not enough to hold
 one.
 
+## OCAD export
+
+The same print rectangle can be saved as an editable OCAD file, as a starting point for someone who
+is going to survey the area. `src/ocd/` does the whole conversion in the browser; there is no
+backend and no WebAssembly, because an A4 page is a few dozen vector tiles and a few megabytes of
+`DataView` writes.
+
+* The data comes from a **vector** pyramid (`tiles_vector/` from `mapant-nf --vector_tiles true`),
+  not from the WebP archive, since an image cannot be turned back into objects. `src/ocd/config.ts`
+  holds its URL and zoom range; both are `VITE_`-prefixed build settings.
+* It always reads the **deepest** zoom, the only level that carries the map as karttapullautin
+  rendered it. Every level above it is deliberately generalised for the screen -- form lines and
+  knolls left off, the vegetation traced from a coarser grid, the cliff hatching sampled -- which is
+  right for an overview and wrong for a map to survey from.
+* A tile that answers with something that is not a vector tile costs its own square and no more. A
+  host that serves its index page instead of a 404 for a tile the pyramid does not have is the
+  usual reason, and it used to end the export in the protobuf parser.
+* Tiles carry a buffer of their neighbours' geometry, so every feature is first clipped to its own
+  tile square -- the pieces from adjacent tiles then abut instead of overlapping -- and the line
+  pieces that met at a border are stitched back into one line (`src/ocd/geometry.ts`).
+* karttapullautin's classes are translated to ISOM 2017-2 symbols in `src/ocd/isom.ts`. Where it
+  emits ISOM 2000 codes for OpenStreetMap shapes, the translation is OpenOrienteering Mapper's own
+  crosswalk table. Two mappings are judgement rather than translation and are marked as such: which
+  green shade counts as slow running, walk or fight, and what undergrowth means.
+* The file is written by appending to `public/templates/isom2017-2_10000.ocd`
+  (`src/ocd/ocdwriter.ts`). An OCD object can only reference a symbol defined in the same file, so
+  the template supplies the symbol set and colour table; the writer keeps its bytes verbatim,
+  repoints the georeferencing string, and appends object index blocks and objects. That is also why
+  a code with no symbol in the template is dropped with a warning rather than written as a
+  reference to nothing, which OCAD reports as a damaged object.
+* The result is georeferenced in the LiDAR's own projected system (ETRS89 / UTM zone 32N for
+  Bavaria), so coordinates are the surveyor's own rather than Web Mercator's stretched ones.
+
+`tests/ocd.spec.ts` exports a page from nine real vector tiles and reads the result back with
+[ocad2geojson](https://github.com/perliedman/ocad2geojson) -- a different implementation of the
+format -- checking the version, that every object references a defined symbol, and that the
+georeferencing lands in the right UTM range.
+
+An A4 at 1:10 000 over this terrain is around 220 000 objects and 30 MB, written in some five
+seconds; at 1:4000 it is 65 000 objects in under two. Two thirds of either is the cliff hatching,
+which karttapullautin draws as individual ticks.
+
+**The template's licence needs a decision before release.** It was exported from OpenOrienteering
+Mapper's ISOM 2017-2 symbol set, which is GPLv3, and this app is MIT. Replacing it with a symbol set
+of known provenance (one made in OCAD, say) is a drop-in change: it is fetched at runtime and
+nothing but the symbol numbers is assumed.
+
 ## Drawings in the share link
 
 Finished sketches are snapped onto the ~10 cm grid the URL stores (`src/drawings.ts`), so the length or

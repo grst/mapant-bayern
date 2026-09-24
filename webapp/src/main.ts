@@ -9,6 +9,15 @@ import {applyTranslations, getLang, onLangChange, setLang, t} from './i18n';
 import {attributionText, createLayers, MAPANT_MIN_ZOOM} from './layers';
 import {createMap} from './map';
 import {exportPdf, type PrintLayerOptions} from './print';
+import {exportOcd, xyzSource} from './ocd';
+import {
+  MAP_CRS,
+  OCD_TEMPLATE_URL,
+  VECTOR_MAX_ZOOM,
+  VECTOR_MIN_ZOOM,
+  VECTOR_TILES_URL,
+} from './ocd/config';
+import {gridZoneFor} from './ocd/proj';
 import {DEFAULT_VIEW, readState, writeState, type AppState} from './urlstate';
 import {createDrawToolbar} from './ui/drawtoolbar';
 import {initZoomHint} from './ui/hint';
@@ -102,6 +111,43 @@ map.addControl(
         printSettings = settings;
         refreshPreview();
       },
+      onExportOcd: async (settings) => {
+        const center = map.getView().getCenter();
+        if (!center) {
+          return;
+        }
+        try {
+          const response = await fetch(OCD_TEMPLATE_URL);
+          if (!response.ok) {
+            throw new Error(`${OCD_TEMPLATE_URL}: ${response.status}`);
+          }
+          const result = await exportOcd({
+            ...settings,
+            center,
+            source: xyzSource(VECTOR_TILES_URL, VECTOR_MIN_ZOOM, VECTOR_MAX_ZOOM),
+            template: await response.arrayBuffer(),
+            crs: MAP_CRS,
+            gridZone: gridZoneFor(MAP_CRS),
+          });
+          if (result.objects === 0) {
+            showToast(t('print.ocdEmpty'), 4000);
+            return;
+          }
+          // Codes with no symbol in the template are dropped rather than written as references to
+          // nothing; worth knowing about, but not worth stopping for.
+          if (result.skipped.size > 0) {
+            console.warn('OCD export skipped unmapped symbols', Object.fromEntries(result.skipped));
+          }
+          if (result.unreadable > 0) {
+            console.warn(`OCD export: ${result.unreadable} tile(s) were not readable as vector tiles`);
+          }
+          saveFile(result.file, `mapant-bayern_1-${settings.scale}.ocd`);
+          showToast(t('print.ocdReady'));
+        } catch (error) {
+          console.error('OCD export failed', error);
+          showToast(t('print.ocdFailed'), 4000);
+        }
+      },
       onExport: async (settings) => {
         const center = map.getView().getCenter();
         if (!center) {
@@ -143,3 +189,13 @@ onLangChange(() => {
 window.addEventListener('hashchange', () => applyState(readState()));
 
 save();
+
+/** Hand a generated file to the browser's download machinery. */
+function saveFile(bytes: Uint8Array, fileName: string): void {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], {type: 'application/octet-stream'}));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}

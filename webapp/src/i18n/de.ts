@@ -38,6 +38,12 @@ export const de: Record<Key, string> = {
   'print.busy': 'Wird erzeugt…',
   'print.ready': 'PDF gespeichert',
   'print.failed': 'Das PDF konnte nicht erstellt werden',
+  'print.exportOcd': 'OCAD-Datei erstellen',
+  'print.ocdBusy': 'Wird umgewandelt…',
+  'print.ocdReady': 'OCAD-Datei gespeichert',
+  'print.ocdFailed': 'Die OCAD-Datei konnte nicht erstellt werden',
+  'print.ocdEmpty': 'In diesem Bereich gibt es keine Kartendaten',
+  'print.ocdHint': 'Eine bearbeitbare Grundkarte für OCAD oder OpenOrienteering Mapper. Feldarbeit bleibt nötig.',
 
   'share.title': 'Link zu dieser Ansicht kopieren',
   'share.copied': 'Link in die Zwischenablage kopiert',
