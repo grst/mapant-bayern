@@ -1,6 +1,8 @@
 import GeoJSON from 'ol/format/GeoJSON';
+import LayerGroup from 'ol/layer/Group';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
+import VectorTileLayer from 'ol/layer/VectorTile';
 import WebGLTileLayer from 'ol/layer/WebGLTile';
 import {transformExtent} from 'ol/proj';
 import ImageTileSource from 'ol/source/ImageTile';
@@ -12,8 +14,10 @@ import Stroke from 'ol/style/Stroke';
 import Style from 'ol/style/Style';
 import Text from 'ol/style/Text';
 import {createXYZ} from 'ol/tilegrid';
+import {applyStyle} from 'ol-mapbox-style';
 import {PMTiles} from 'pmtiles';
 import type {FeatureLike} from 'ol/Feature';
+import type BaseLayer from 'ol/layer/Base';
 
 /** The orienteering map archive. Its own header reports minzoom 12 / maxzoom 18. */
 const MAPANT_PMTILES = 'https://mapant-tiles.orienteering-allgaeu.de/mapant-bayern.pmtiles';
@@ -26,6 +30,20 @@ export const MAPANT_MAX_ZOOM = 18;
  * is nothing to read it from.
  */
 const MAPANT_EXTENT = transformExtent([8.96484, 47.21957, 13.88672, 50.62507], 'EPSG:4326', 'EPSG:3857');
+
+/**
+ * A vector pyramid's MapLibre style, as mapant-nf publishes it next to the tiles
+ * (`tiles_vector/style.json`). When set, the orienteering map is drawn from the
+ * vector tiles with that style instead of from the raster archive above.
+ */
+const MAPANT_STYLE_URL: string | undefined = import.meta.env.VITE_MAPANT_STYLE || undefined;
+
+/**
+ * Where the vector pyramid has tiles, as one MultiPolygon in lon/lat; written
+ * next to the style by `scripts/vector-coverage.mjs`. The paper is drawn only
+ * there, so the rest of the viewport stays as empty as around the raster map.
+ */
+const MAPANT_COVERAGE_URL = MAPANT_STYLE_URL && new URL('coverage.geojson', new URL(MAPANT_STYLE_URL, location.href)).href;
 
 const OSM_ATTRIBUTION =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>';
@@ -115,6 +133,96 @@ function createMapantLayer(cacheSize?: number): TileLayer<ImageTileSource> {
       },
     }),
   });
+}
+
+/**
+ * Layers whose content arrives asynchronously and that a print map has to wait
+ * for before it can tell a finished render from an empty one.
+ */
+const pending = new WeakMap<BaseLayer, Promise<unknown>>();
+
+/** Resolves once every layer that sets itself up asynchronously is ready to render. */
+export async function layersReady(layers: BaseLayer[]): Promise<void> {
+  await Promise.all(layers.map((layer) => pending.get(layer)?.catch(() => undefined)));
+}
+
+/**
+ * Resolves template URLs in a style relative to the style itself. The pipeline
+ * keeps them relative so its output works wherever it is hosted. Concatenated
+ * rather than run through URL(), which would percent-encode the placeholders.
+ */
+interface GlStyle {
+  sources: Record<string, {type?: string; tiles?: string[]; bounds?: number[]; tileSize?: number}>;
+  sprite?: unknown;
+}
+
+function absoluteStyle(style: GlStyle, styleUrl: string): GlStyle {
+  const base = styleUrl.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+  const absolute = (url: string) => (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('/') ? url : base + url);
+  for (const source of Object.values(style.sources)) {
+    if (source.tiles) {
+      source.tiles = source.tiles.map(absolute);
+    }
+  }
+  if (typeof style.sprite === 'string') {
+    style.sprite = absolute(style.sprite);
+  }
+  return style;
+}
+
+/**
+ * The orienteering map from the vector pyramid: white paper where there are
+ * tiles, and the tiles on top of it styled by the pipeline's own style.
+ */
+function createVectorMapantLayer(styleUrl: string, cacheSize?: number): LayerGroup {
+  const absoluteUrl = new URL(styleUrl, location.href).href;
+  const paper = new VectorLayer({
+    source: new VectorSource({url: MAPANT_COVERAGE_URL, format: new GeoJSON()}),
+    style: new Style({fill: new Fill({color: '#ffffff'})}),
+  });
+  const tiles = new VectorTileLayer({
+    cacheSize,
+    // The same hand-over from the OSM background as the raster layer. Set here, so
+    // ol-mapbox-style does not derive its own from the tile grid.
+    minZoom: MAPANT_MIN_ZOOM - 0.001,
+    // No decluttering: the slope ticks are symbols too, and none may be dropped.
+    declutter: false,
+  });
+  const ready = fetch(absoluteUrl)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`${absoluteUrl}: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((style: GlStyle) => {
+      // Tiles as 256 px, the way the raster pyramid is shown: map zoom z reads tile level z. As
+      // 512 px tiles, which is how MapLibre takes them, every level would show one zoom later --
+      // the form lines of the deepest level only at z17. The style's own zoom stays MapLibre's,
+      // so its line widths and pattern spacing, given in ground metres, come out unchanged.
+      for (const source of Object.values(style.sources)) {
+        if (source.type === 'vector') {
+          source.tileSize = 256;
+        }
+      }
+      const [west, south, east, north] = style.sources.mapant?.bounds ?? [];
+      if (Number.isFinite(west)) {
+        const extent = transformExtent([west, south, east, north], 'EPSG:4326', 'EPSG:3857');
+        tiles.setExtent(extent);
+        paper.setExtent(extent);
+      }
+      return applyStyle(tiles, absoluteStyle(style, absoluteUrl) as object, {styleUrl: absoluteUrl});
+    })
+    .then(() => {
+      // The paper colour comes from the coverage layer, not from the style's
+      // background, which OpenLayers would paint across the whole viewport.
+      tiles.setBackground(undefined);
+      tiles.getSource()?.setAttributions(MAPANT_ATTRIBUTION);
+    })
+    .catch((error) => console.error('Could not load the vector map style', error));
+  const group = new LayerGroup({minZoom: MAPANT_MIN_ZOOM - 0.001, layers: [paper, tiles]});
+  pending.set(group, ready);
+  return group;
 }
 
 /**
@@ -256,7 +364,7 @@ function createGridLayer(screenResolution?: number): TileLayer<TileDebug> {
 
 export interface AppLayers {
   osm: TileLayer<OSM>;
-  mapant: TileLayer<ImageTileSource>;
+  mapant: TileLayer<ImageTileSource> | LayerGroup;
   hillshade: WebGLTileLayer;
   places: VectorLayer<VectorSource>;
   grid: TileLayer<TileDebug>;
@@ -288,7 +396,9 @@ export function createLayers(options: LayerOptions = {}): AppLayers {
   const styleScale = options.styleScale ?? 1;
   return {
     osm: createOsmLayer(),
-    mapant: createMapantLayer(options.tileCacheSize),
+    mapant: MAPANT_STYLE_URL
+      ? createVectorMapantLayer(MAPANT_STYLE_URL, options.tileCacheSize)
+      : createMapantLayer(options.tileCacheSize),
     hillshade: createHillshadeLayer(options.tileCacheSize),
     places: createPlacesLayer(styleScale),
     grid: createGridLayer(options.screenResolution),

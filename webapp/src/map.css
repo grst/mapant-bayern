@@ -167,7 +167,8 @@
   font-size: 0.75rem;
 }
 
-.print-panel .print-export {
+.print-panel .print-export,
+.print-panel .print-export-ocd {
   display: block;
   width: 100%;
   height: auto;
@@ -182,7 +183,16 @@
   cursor: pointer;
 }
 
-.print-panel .print-export[disabled] {
+/* Secondary to the PDF: same size, outlined, so the two read as a pair. */
+.print-panel .print-export-ocd {
+  margin-top: 0.9rem;
+  border: 1px solid var(--accent);
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.print-panel .print-export[disabled],
+.print-panel .print-export-ocd[disabled] {
   opacity: 0.6;
   cursor: progress;
 }

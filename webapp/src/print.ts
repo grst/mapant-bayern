@@ -7,6 +7,7 @@ import type {Coordinate} from 'ol/coordinate';
 import type {Extent} from 'ol/extent';
 import type Polygon from 'ol/geom/Polygon';
 import {formatNumber} from './i18n';
+import {layersReady} from './layers';
 
 /** Paper size in millimetres. A4 only – anything else is a rare need for a map. */
 const PAPER_MM = {portrait: [210, 297], landscape: [297, 210]} as const;
@@ -183,16 +184,21 @@ export async function exportPdf(request: PrintRequest): Promise<void> {
   container.style.height = `${heightPx}px`;
   document.body.append(container);
 
+  const layers = request.createLayers({
+    styleScale,
+    screenResolution: resolutionForScale(scale, center),
+    tileCacheSize,
+  });
+  // A layer with nothing to draw yet counts as rendered, so a map built before
+  // the vector style has loaded would report the page complete while blank.
+  await layersReady(layers);
+
   const map = new Map({
     target: container,
     pixelRatio: 1,
     controls: [],
     interactions: [],
-    layers: request.createLayers({
-      styleScale,
-      screenResolution: resolutionForScale(scale, center),
-      tileCacheSize,
-    }),
+    layers,
     view: new View({
       center,
       resolution: resolutionForScale(scale, center, dpi),

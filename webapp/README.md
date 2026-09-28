@@ -63,6 +63,27 @@ some seconds on a fast connection and a couple of minutes on a slow one; the til
 layers is sized for the page, since the 512 tiles OpenLayers keeps by default are not enough to hold
 one.
 
+## Vector map
+
+Built with `VITE_MAPANT_STYLE` set to the `style.json` that mapant-nf publishes next to a vector
+pyramid, the app draws the orienteering map from those tiles instead of the WebP archive, with the
+pipeline's own MapLibre style applied by `ol-mapbox-style`. Everything else -- print, OCAD export,
+places, hill shading -- stays as it is.
+
+* The style's background is not used: OpenLayers would paint it across the whole viewport. White
+  paper is drawn only where the pyramid has tiles, from a `coverage.geojson` next to the style;
+  `node scripts/vector-coverage.mjs <tiles_vector dir>` writes it.
+* The tiles are read as 256 px tiles, like the raster pyramid: zoom z shows tile level z, so all
+  contours are on screen from z15 and the full detail from z16. MapLibre, which takes them as
+  512 px, shows each level one zoom later. Line widths are unaffected; they follow the style's zoom.
+* Print needs nothing extra. The style sizes its lines in ground metres, so the finer resolution of
+  the print map already draws them at the right width on paper.
+
+```sh
+VITE_MAPANT_STYLE=/vtiles/style.json VITE_MAPANT_VECTOR_TILES='/vtiles/{z}/{x}/{y}.pbf' \
+VITE_MAPANT_VECTOR_MIN_ZOOM=12 VITE_MAPANT_VECTOR_MAX_ZOOM=16 npm run build
+```
+
 ## OCAD export
 
 The same print rectangle can be saved as an editable OCAD file, as a starting point for someone who
