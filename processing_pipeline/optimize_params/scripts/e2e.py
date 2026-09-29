@@ -81,38 +81,48 @@ class RangeHandler(http.server.SimpleHTTPRequestHandler):
         self._remaining = None
 
 
-def render(site: str, label: str, overrides: dict, variant: str = "full") -> Path:
-    s = kp.sites()[site]
+def render(site: str, label: str, overrides: dict, variant: str = "full", site_def: dict | None = None,
+           tile_overrides: dict[str, dict] | None = None) -> Path:
+    """
+    `tile_overrides` (tile -> overrides) renders tiles with different parameter sets, e.g. each with
+    the set of its point generation: one batch run per set, the other tiles lending points only.
+    """
+    s = site_def or kp.sites()[site]
     d = ROOT / f"work/e2e/{site}/{label}"
-    run = d / "run"
+    groups: dict[str, list[str]] = {}
+    for t in s["core"]:
+        o = (tile_overrides or {}).get(t, overrides)
+        groups.setdefault(json.dumps(o, sort_keys=True), []).append(t)
     if not (d / "vec").exists():
-        shutil.rmtree(run, ignore_errors=True)
-        (run / "in").mkdir(parents=True)
-        (run / "out").mkdir()
-        laz_dir = ROOT / ("work/laz" if variant == "full" else f"work/laz_{variant}")
-        for t in s["core"] + s["halo"]:
-            f = laz_dir / f"{t}.laz"
-            if f.exists():
-                (run / "in" / f.name).symlink_to(f.resolve())
-            if t in s["halo"]:
-                (run / "out" / f"{t}.png").touch()
-        ini = kp.effective_ini(overrides)
-        ini.update(OWNED)
-        ini["processes"] = "2"
-        kp.write_ini(run / "pullauta.ini", ini)
-        shutil.copy(run / "pullauta.ini", d / "effective.ini")
-        with open(run / "pullauta.log", "w") as log:
-            subprocess.run([str(kp.PULLAUTA)], cwd=run, env=dict(os.environ, RAYON_NUM_THREADS="8"),
-                           stdout=log, stderr=subprocess.STDOUT, check=True)
         vec = d / "vec.tmp"
         shutil.rmtree(vec, ignore_errors=True)
-        for t in s["core"]:
-            b = vec / f"{t}_vec"
-            b.mkdir(parents=True)
-            for f in (run / "out").glob(f"{t}_*.geojson"):
-                shutil.move(f, b / f.name)
+        for gi, (okey, tiles) in enumerate(groups.items()):
+            run = d / f"run{gi}"
+            shutil.rmtree(run, ignore_errors=True)
+            (run / "in").mkdir(parents=True)
+            (run / "out").mkdir()
+            laz_dir = ROOT / ("work/laz" if variant == "full" else f"work/laz_{variant}")
+            for t in s["core"] + s["halo"]:
+                f = laz_dir / f"{t}.laz"
+                if f.exists():
+                    (run / "in" / f.name).symlink_to(f.resolve())
+                if t not in tiles:
+                    (run / "out" / f"{t}.png").touch()
+            ini = kp.effective_ini(json.loads(okey))
+            ini.update(OWNED)
+            ini["processes"] = "2"
+            kp.write_ini(run / "pullauta.ini", ini)
+            shutil.copy(run / "pullauta.ini", d / ("effective.ini" if gi == 0 else f"effective{gi}.ini"))
+            with open(run / "pullauta.log", "w") as log:
+                subprocess.run([str(kp.PULLAUTA)], cwd=run, env=dict(os.environ, RAYON_NUM_THREADS="8"),
+                               stdout=log, stderr=subprocess.STDOUT, check=True)
+            for t in tiles:
+                b = vec / f"{t}_vec"
+                b.mkdir(parents=True)
+                for f in (run / "out").glob(f"{t}_*.geojson"):
+                    shutil.move(f, b / f.name)
+            shutil.rmtree(run)
         vec.rename(d / "vec")
-        shutil.rmtree(run)
 
     # parents: the z12 tiles the core tiles touch
     to_ll = Transformer.from_crs(25832, 4326, always_xy=True)

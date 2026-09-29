@@ -53,18 +53,19 @@ def odd(trial, name, lo, hi):
 
 
 def space_green(t: optuna.Trial) -> dict:
+    # bounds widened in round 2 where round 1's Pareto fronts sat on them
     z_lo = t.suggest_float("z_lo", 0.5, 1.6)
-    z1 = t.suggest_float("z1", 1.8, 4.0)
+    z1 = t.suggest_float("z1", 1.2, 5.0)
     z2 = z1 + t.suggest_float("z2_d", 0.3, 2.5)
     z3 = z2 + t.suggest_float("z3_d", 0.5, 4.0)
     f2 = t.suggest_float("f2", 0.0, 1.0)
     f3 = t.suggest_float("f3", 0.0, 0.6)
-    t_low = t.suggest_float("t_low", 0.02, 0.4, log=True)
-    t_high = t.suggest_float("t_high", 0.02, 0.4, log=True)
+    t_low = t.suggest_float("t_low", 0.005, 0.4, log=True)
+    t_high = t.suggest_float("t_high", 0.005, 0.4, log=True)
     s1 = t.suggest_float("s1", 0.05, 1.0, log=True)
     s2 = s1 + t.suggest_float("s2_d", 0.1, 2.5, log=True)
     s3 = s2 + t.suggest_float("s3_d", 0.2, 4.0, log=True)
-    gds = t.suggest_categorical("greendetectsize", [2, 3, 4, 5])
+    gds = t.suggest_int("greendetectsize", 2, 8)
     return {
         "zone1": f"{z_lo:.2f}|{z1:.2f}|99|1",
         "zone2": f"{z1:.2f}|{z2:.2f}|99|{f2:.2f}",
@@ -76,18 +77,18 @@ def space_green(t: optuna.Trial) -> dict:
         "thresold5": f"20|99|{t_high:.3f}",
         "greenground": f"{t.suggest_float('greenground', 0.4, 1.6):.2f}",
         "greenhigh": f"{t.suggest_float('greenhigh', 1.2, 4.0):.2f}",
-        "topweight": f"{t.suggest_float('topweight', 0.2, 1.0):.2f}",
-        "pointvolumefactor": f"{t.suggest_float('pointvolumefactor', 0.0, 0.5):.2f}",
+        "topweight": f"{t.suggest_float('topweight', 0.05, 1.0):.2f}",
+        "pointvolumefactor": f"{t.suggest_float('pointvolumefactor', 0.0, 0.8):.2f}",
         "firstandlastreturnasground": str(t.suggest_int("firstandlastreturnasground", 1, 4)),
-        "firstandlastreturnfactor": f"{t.suggest_float('firstandlastreturnfactor', 0.0, 1.0):.2f}",
+        "firstandlastreturnfactor": f"{t.suggest_float('firstandlastreturnfactor', 0.0, 1.5):.2f}",
         "lastreturnfactor": f"{t.suggest_float('lastreturnfactor', 0.0, 1.0):.2f}",
         "greendetectsize": str(gds),
         "groundboxsize": str(t.suggest_categorical("groundboxsize", [1, 3])),
-        "medianboxsize": str(odd(t, "medianboxsize", 1, 21)),
+        "medianboxsize": str(odd(t, "medianboxsize", 1, 31)),
         "medianboxsize2": str(odd(t, "medianboxsize2", 1, 9)),
         "greenshades": f"{s1:.3f}|{s2:.3f}|{s3:.3f}",
         "greenshadeisom": "406|408|410",
-        "vegesimplify": f"{t.suggest_float('vegesimplify', 0.5, 4.0):.2f}",
+        "vegesimplify": f"{t.suggest_float('vegesimplify', 0.5, 6.0):.2f}",
     }
 
 
@@ -144,8 +145,11 @@ STUDIES = {
 
 # sites whose reference is too weak for a feature (few or no symbols of that kind)
 SKIP = {
-    "knolls": {"kastensee", "doebraberg", "ochsenkopf", "schneckenberg"},
-    "ug": {"kastensee", "doebraberg"},
+    "knolls": {"kastensee", "doebraberg", "ochsenkopf", "schneckenberg", "kohlbruck", "reitimwinkl"},
+    "ug": {"kastensee", "doebraberg", "reitimwinkl"},
+    # a ski-O map maps open land only; Kohlbruck's black hatching reads as rock
+    "green": {"reitimwinkl"},
+    "cliffs": {"kohlbruck", "reitimwinkl"},
 }
 
 

@@ -182,9 +182,10 @@ def sites() -> dict:
     return yaml.safe_load((ROOT / "sites.yaml").read_text())
 
 
-def prepare(site: str, variant: str = "full", processes: int = 2, laz_dir: Path | None = None) -> None:
+def prepare(site: str, variant: str = "full", processes: int = 2, laz_dir: Path | None = None,
+            site_def: dict | None = None) -> None:
     """Batch-run a site's core tiles once and cache each one's buffered point cloud."""
-    s = sites()[site]
+    s = site_def or sites()[site]
     todo = [t for t in s["core"] if not xyz_path(t, variant).exists()]
     if not todo:
         return

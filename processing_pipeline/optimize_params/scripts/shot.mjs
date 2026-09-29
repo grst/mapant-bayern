@@ -13,7 +13,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({viewport: {width: +size, height: +size}});
 page.on('pageerror', (e) => console.error('pageerror', e.message));
 await page.goto(url);
-await page.waitForFunction(() => window.map && window.map.loaded() && window.map.areTilesLoaded(), null,
+await page.waitForFunction(() => window.map && typeof window.map.loaded === 'function' && window.map.loaded() && window.map.areTilesLoaded(), null,
   {timeout: 120000, polling: 500});
 await page.evaluate(() => new Promise((r) => { if (window.map.loaded()) r(); else window.map.once('idle', r); }));
 await page.evaluate(() => { for (const el of document.querySelectorAll('.legend,.maplibregl-control-container')) el.remove(); });

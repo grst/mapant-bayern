@@ -185,6 +185,11 @@ def osm_masks(site: str, shape_hw, tf) -> tuple[np.ndarray, np.ndarray]:
     return r(ways), r(areas) | r(water_lines) | r(fields)
 
 
+# Photos of a full sheet: the band of the image (as fractions of its rows) that is map; legend,
+# title and text blocks outside it are paper white and would read as white forest.
+KEEP_ROWS = {"tyrolsberg": (0.30, 0.72)}
+
+
 def run(site: str, meta: dict) -> None:
     src = ROOT / f"work/omaps/{meta['omaps_id']}/ref.tif"
     with rasterio.open(src) as f:
@@ -192,6 +197,10 @@ def run(site: str, meta: dict) -> None:
         tf = f.transform
     rgb, valid = a[:3], a[3] > 0
     valid = ndi.binary_erosion(valid, iterations=5)
+    if site in KEEP_ROWS:
+        lo, hi = KEEP_ROWS[site]
+        valid[: int(lo * valid.shape[0])] = False
+        valid[int(hi * valid.shape[0]):] = False
     rgb = white_balance(rgb, valid)
     idx, dist = classify(rgb)
 

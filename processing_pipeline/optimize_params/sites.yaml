@@ -235,3 +235,168 @@ schaufling:
     '797_5417': 0.18
     '798_5416': 0.3
     '798_5417': 0.09
+roethenbach:
+  omaps_id: 7552
+  split: train
+  note: 'Nuremberg Reichswald edge: pine, digital map'
+  map_date: '2021-01-01'
+  map_name: Röthenbacher Holz
+  core:
+  - '669_5474'
+  halo:
+  - '668_5473'
+  - '668_5474'
+  - '668_5475'
+  - '669_5473'
+  - '669_5475'
+  - '670_5473'
+  - '670_5474'
+  - '670_5475'
+  cover:
+    '669_5474': 0.42
+fuerstenschlag:
+  omaps_id: 14359
+  split: train
+  note: 'Hersbrucker Alb: mixed forest, rock (photo)'
+  map_date: '2026-09-26'
+  map_name: Fürstenschlag
+  core:
+  - '672_5473'
+  - '673_5473'
+  halo:
+  - '671_5472'
+  - '671_5473'
+  - '671_5474'
+  - '672_5472'
+  - '672_5474'
+  - '673_5472'
+  - '673_5474'
+  - '674_5472'
+  - '674_5473'
+  - '674_5474'
+  cover:
+    '672_5473': 0.92
+    '673_5473': 0.95
+kozina:
+  omaps_id: 13724
+  split: train
+  note: 'Fichtelgebirge/Czech border: mixed forest (photo)'
+  map_date: '2026-04-25'
+  map_name: Kozina - Ziegenberg
+  core:
+  - '729_5562'
+  halo:
+  - '728_5561'
+  - '728_5562'
+  - '728_5563'
+  - '729_5561'
+  - '729_5563'
+  - '730_5561'
+  - '730_5562'
+  - '730_5563'
+  cover:
+    '729_5562': 0.81
+tyrolsberg:
+  omaps_id: 14361
+  split: holdout
+  note: Oberpfalz Jura near Neumarkt (photo of full sheet, legend masked)
+  map_date: '2026-09-27'
+  map_name: Tyrolsberg
+  core:
+  - '673_5461'
+  - '674_5461'
+  - '674_5462'
+  halo:
+  - '672_5460'
+  - '672_5461'
+  - '672_5462'
+  - '673_5460'
+  - '673_5462'
+  - '673_5463'
+  - '674_5460'
+  - '674_5463'
+  - '675_5460'
+  - '675_5461'
+  - '675_5462'
+  - '675_5463'
+  cover:
+    '673_5461': 0.68
+    '674_5461': 0.78
+    '674_5462': 0.65
+reitimwinkl:
+  omaps_id: 11564
+  split: train
+  note: 'Chiemgau Alps valley: ski-O map, only open land is mapped'
+  map_date: '2025-02-17'
+  map_name: Reit im Winkl
+  core:
+  - '760_5284'
+  - '760_5285'
+  halo:
+  - '759_5283'
+  - '759_5284'
+  - '759_5285'
+  - '759_5286'
+  - '760_5283'
+  - '760_5286'
+  - '761_5283'
+  - '761_5284'
+  - '761_5285'
+  - '761_5286'
+  cover:
+    '760_5284': 0.86
+    '760_5285': 1.0
+kohlbruck:
+  omaps_id: 178
+  split: train
+  note: 'Passau, Inn valley slopes: mixed forest, much green (scan)'
+  map_date: '2018-05-12'
+  map_name: Kohlbruck
+  core:
+  - '825_5386'
+  - '826_5385'
+  - '826_5386'
+  - '827_5385'
+  halo:
+  - '824_5385'
+  - '824_5386'
+  - '824_5387'
+  - '825_5384'
+  - '825_5385'
+  - '825_5387'
+  - '826_5384'
+  - '826_5387'
+  - '827_5384'
+  - '827_5386'
+  - '827_5387'
+  - '828_5384'
+  - '828_5385'
+  - '828_5386'
+  cover:
+    '825_5386': 0.77
+    '826_5385': 0.71
+    '826_5386': 1.0
+    '827_5385': 0.8
+hechenberg:
+  omaps_id: 14088
+  split: holdout
+  note: Inn/Salzach hills near Burghausen (scan)
+  map_date: '2015-06-06'
+  map_name: Hechenberg
+  core:
+  - '782_5342'
+  - '783_5342'
+  halo:
+  - '781_5341'
+  - '781_5342'
+  - '781_5343'
+  - '782_5341'
+  - '782_5343'
+  - '783_5341'
+  - '783_5343'
+  - '784_5341'
+  - '784_5342'
+  - '784_5343'
+  cover:
+    '782_5342': 0.53
+    '783_5342': 0.6

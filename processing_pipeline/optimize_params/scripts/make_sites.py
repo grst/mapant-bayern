@@ -29,15 +29,28 @@ SITES = {
     13172: ("schneckenberg", "holdout", 2, "Oberpfalz: mixed forest"),
     10206: ("doebraberg", "holdout", 4, "Frankenwald: spruce, steep slopes (scan with overprint)"),
     13273: ("schaufling", "holdout", 4, "Bavarian Forest, LAS 1.2 low density (LiDAR 2018, map 2026 draft)"),
+    # second round (2026-09-29)
+    7552: ("roethenbach", "train", 2, "Nuremberg Reichswald edge: pine, digital map"),
+    14359: ("fuerstenschlag", "train", 3, "Hersbrucker Alb: mixed forest, rock (photo)"),
+    13724: ("kozina", "train", 3, "Fichtelgebirge/Czech border: mixed forest (photo)"),
+    14361: ("tyrolsberg", "holdout", 3, "Oberpfalz Jura near Neumarkt (photo of full sheet, legend masked)"),
+    11564: ("reitimwinkl", "train", 4, "Chiemgau Alps valley: ski-O map, only open land is mapped"),
+    178: ("kohlbruck", "train", 4, "Passau, Inn valley slopes: mixed forest, much green (scan)"),
+    # 10219 Silberhütte (Upper Palatinate Forest): photo too pale, its greens are not recoverable
+    14088: ("hechenberg", "holdout", 2, "Inn/Salzach hills near Burghausen (scan)"),
 }
 MIN_COVER = 0.6
 # per-site exceptions: a small map whose best tile is under the general threshold
-MIN_COVER_SITE = {"schaufling": 0.05}
+# core tiles of another point generation than the rest of the site (a site is scored per generation)
+EXCLUDE_CORE = {"reitimwinkl": {"761_5285"}}
+MIN_COVER_SITE = {"schaufling": 0.05, "roethenbach": 0.3, "hechenberg": 0.4}
 
 
 def main() -> None:
     tr = Transformer.from_crs(4326, 25832, always_xy=True)
     maps = {m["id"]: m for m in json.loads((ROOT / "results/omaps_maps.json").read_text())}
+    import csv
+    known = {r["tile"].removesuffix(".laz") for r in csv.DictReader(open(ROOT.parents[0] / "input/laz_tiles.csv"))}
     out = {}
     for mid, (name, split, n_core, note) in SITES.items():
         g = transform(lambda x, y, z=None: tr.transform(x, y), shape(maps[mid]["outline"]))
@@ -48,6 +61,8 @@ def main() -> None:
             for y in range(y0, y1 + 1)
         }
         min_cover = MIN_COVER_SITE.get(name, MIN_COVER)
+        cover = {c: v for c, v in cover.items() if f"{c[0]}_{c[1]}" in known} if known else cover
+        cover = {c: v for c, v in cover.items() if f"{c[0]}_{c[1]}" not in EXCLUDE_CORE.get(name, ())}
         core = sorted((c for c in cover if cover[c] >= min_cover), key=lambda c: -cover[c])[:n_core]
         halo = sorted({(x + dx, y + dy) for x, y in core for dx in (-1, 0, 1) for dy in (-1, 0, 1)} - set(core))
         out[name] = dict(

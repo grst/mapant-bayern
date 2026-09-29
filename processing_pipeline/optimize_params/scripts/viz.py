@@ -53,7 +53,8 @@ def dots(img: np.ndarray, pts: np.ndarray, tf, color=(166, 85, 43), r=3, win=Non
 
 
 def panels(site: str, param_sets: dict[str, dict], window: tuple[int, int, int] | None = None,
-           stages=("vege", "cliffs", "contours"), out: Path | None = None, width: int = 700) -> Path:
+           stages=("vege", "cliffs", "contours"), out: Path | None = None, width: int = 700,
+           cols: int | None = None) -> Path:
     """
     window = (easting, northing, size_m) of the crop's lower-left corner, or None for the site's
     first core tile.
@@ -101,7 +102,7 @@ def panels(site: str, param_sets: dict[str, dict], window: tuple[int, int, int] 
 
     font = ImageFont.load_default(size=18)
     k = len(tiles)
-    cols = 3 if k in (5, 6) else min(k, 4)
+    cols = cols or (3 if k in (5, 6) else min(k, 4))
     rows = (k + cols - 1) // cols
     sheet = Image.new("RGB", (cols * width, rows * (width + 28)), "white")
     dr = ImageDraw.Draw(sheet)

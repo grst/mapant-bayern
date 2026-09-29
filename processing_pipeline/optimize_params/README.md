@@ -29,10 +29,17 @@ This file documents the method and how to re-run it.
 | `scripts/evaluate.py` | named parameter sets on all sites and variants → `results/eval.csv` |
 | `scripts/e2e.py`, `scripts/shot.mjs` | production path: kp batch → tippecanoe (mapant-nf `make_vector_tiles.py`) → viewer style → screenshot |
 | `scripts/viz.py` | side-by-side panels |
+| `scripts/choose_sets.py` | picks points from the Pareto fronts → `work/sets.json`, `results/choices.json`, `results/fronts/` |
+| `scripts/write_inis.py` | sets → full ini files in `params/` |
+| `border.yaml`, `scripts/border.py` | blocks on the LAS 1.2 / LAS 1.4 border; the step in green share across it → `results/border.csv` |
+| `scripts/gallery.py` | a comparison sheet for every scored tile → `report/img/gallery/` |
+| `scripts/report.py` | the report: `offline` → `report/index.html` + `report/gallery.html`; `artifact` → one self-contained page |
+| `scripts/samplesheet_ini.py` | adds `las_version` and `pullauta_ini` to `../input/laz_tiles.csv` |
+| `scripts/prune_runs.py` | deletes cached stage runs of search trials (disk) |
 | `params/` | the recommended ini files |
 
 Bulk data (laz, point-cloud caches, run outputs, reference tiles) lives in `work/`, which is not
-tracked.
+tracked. Neither is `report/`, the offline report: it shows crops of third-party orienteering maps.
 
 ## Method
 
@@ -58,7 +65,15 @@ tracked.
   Course overprint, water, settlements, OSM farmland/meadows (drawn from OSM in production) and
   OSM way corridors are masked out.
 * **Registration.** For each site, the shift within ±40 m that best aligns open land and green
-  between the reference and kp's default output. The shifts came out at 0–7 m.
+  between the reference and kp's default output, each image masked by its own coverage. Shifts
+  came out at 0–11 m. A shift that runs to the edge of the window or lowers green agreement is
+  rejected (Tyrolsberg, Hechenberg: most of their open land is masked). Round 1 masked both images
+  with the reference's mask, which pinned every shift to zero; round 2 re-scored everything.
+* **Generation border.** 21 blocks of 2 × 2 km, each two tiles of one generation next to two of
+  the other, both sides mostly forest by the share of multiple returns (plus the block north of
+  Würzburg). Every tile is rendered with its generation's set, and the step in green share (green
+  over non-open area) from the LAS 1.2 to the LAS 1.4 side is averaged over the blocks. This is
+  measured only; it was not an objective.
 
 ### Running kp fast
 
@@ -112,22 +127,34 @@ uv sync
 .venv/bin/python scripts/ref_classify.py
 .venv/bin/python -c "import sys; sys.path.insert(0,'scripts'); import kp; [kp.prepare(s) for s in kp.sites()]"
 .venv/bin/python scripts/register.py
-scripts/run_night.sh                             # the studies
+scripts/run_night.sh                             # round 1 studies
+scripts/run_round2.sh; scripts/run_round2_studies.sh   # round 2: new sites, border blocks, studies
+.venv/bin/python scripts/choose_sets.py && .venv/bin/python scripts/evaluate.py work/sets.json
+.venv/bin/python scripts/border.py eval kp_default gen:las12-balanced,las14-balanced
+.venv/bin/python scripts/write_inis.py las14-balanced las12-balanced ...   # then rename to params/pullauta.bayern-las1x.ini
+.venv/bin/python scripts/gallery.py && .venv/bin/python scripts/report.py offline
+.venv/bin/python scripts/samplesheet_ini.py
 ```
 
-## Results (2026-09-29 run)
+## Results (round 2, 2026-09-29)
 
-The report is published as a private claude.ai artifact; `work/report/report.html` is the local copy, rebuilt by
-`scripts/report.py`.
+The report is `report/index.html` (offline, with `report/gallery.html`: every scored tile of every
+site) and a private claude.ai artifact; both are rebuilt by `scripts/report.py`.
 
 * **Recommended:** `params/pullauta.bayern-las14.ini` for tiles delivered as LAS 1.4 / format 6
   (processed 2023 and later), and `params/pullauta.bayern-las12.ini` for LAS 1.2 / format 1 tiles
-  (processed 2015–2022). With kp's defaults, LAS 1.4 maps come out too green and LAS 1.2 maps too
-  white. A set tuned for one generation makes the other worse than the default.
-* **Alternatives** from the same Pareto fronts: `las14-lessgreen`, `las14-clean`, `las12-detail`
-  (and `las12-clean`, which looks noisier than its name suggests).
-* **LAS 1.4 holdout** (Stubenthal, Schneckenberg): green-level kappa 0.33 → 0.54, green-vs-white
-  balanced accuracy 0.66 → 0.73.
-* **Pulse density** (tested down to 25 % of the pulses) does not change the optimum.
+  (processed 2015–2022). `../input/laz_tiles.csv` carries the matching `pullauta_ini` per tile.
+* **Alternatives** from the same Pareto fronts: `las14-clean`, `las12-lessgreen` (best on the two
+  LAS 1.2 holdout maps, weaker on training), `las12-clean`, `las12-detail` (greenest; pairs best with
+  the LAS 1.4 set at the border).
+* **16 reference maps** (9 in round 1), incl. an Alpine ski-O map used for open land only.
+  omaps.worldofo.com only answers with a Cloudflare bot challenge and could not be used.
+* **LAS 1.4 holdout** (Stubenthal, Schneckenberg, Tyrolsberg): green-level kappa 0.34 (default) →
+  0.43 (round 1) → 0.47. **LAS 1.2 holdout** (Schaufling, Hechenberg): 0.41 → 0.45 → 0.46.
+* **Border:** the LAS 1.4 side is +19 ± 5 percentage points greener with kp's defaults, +11 ± 6 with
+  the recommended pair (+4 with round 1's, +3 with `las12-detail`).
+* **Open land** keeps round 1's settings (round 2 found nothing better in F1). **Cliffs** from the
+  pooled round-2 search. **Pulse density** (down to 25 % of the pulses) does not change the optimum.
 * **Undergrowth and knoll** parameters stay at kp's defaults. See the report for why.
-* Per-site metrics for every set: `results/eval.csv`. Trials: `results/fronts/`. Choices: `results/choices.json`.
+* Per-site metrics: `results/eval.csv`, border: `results/border.csv`, trials: `results/fronts/`,
+  choices: `results/choices.json`.

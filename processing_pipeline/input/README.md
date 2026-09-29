@@ -36,6 +36,8 @@ Regierungsbezirke tile the whole state, so the entire index is reachable in
 | `min_x`, `min_y`, `max_x`, `max_y` | tile bounding box in EPSG:25832 (metres) |
 | `min_lon`, `min_lat`, `max_lon`, `max_lat` | same box in WGS84 (EPSG:4326), degrees |
 | `units` | Regierungsbezirk(e) whose Metalink listed the tile, `\|`-separated |
+| `las_version` | point-record generation from the tile's LAS header: `1.2` (format 1, processed 2015–2022) or `1.4` (format 6, 2023 onwards) |
+| `pullauta_ini` | karttapullautin config tuned for that generation, relative to `processing_pipeline/` (see `optimize_params/README.md`) |
 
 Rows are sorted by `(min_x, min_y)`, so the file is stable across runs and diffs
 cleanly.
@@ -69,7 +71,9 @@ hashing it.
 uv run scripts/build_laz_tile_index.py -o laz_tiles.csv
 ```
 
-Takes about a minute. `uv run` supplies `pyproj` (the only dependency, used for
+Takes about a minute. The last two columns are not part of the Metalinks; add them back with
+`optimize_params/scripts/samplesheet_ini.py` after regenerating (it reads the LAS header survey,
+`optimize_params/results/density.parquet`). `uv run` supplies `pyproj` (the only dependency, used for
 the WGS84 columns) via the script's inline PEP 723 metadata; with a plain
 `python3` the script still runs but leaves the lon/lat columns empty.
 
