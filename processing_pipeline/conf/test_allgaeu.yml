@@ -21,8 +21,15 @@ region_bbox_crs: lonlat
 download_jobs: 8
 download_limit_rate: '200M'
 
-base_zoom: 12
-max_zoom: 18
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+# The look of the map. Each tile's ini comes from the tiles CSV (`pullauta_ini`, by LAS version;
+# see optimize_params/README.md); this one is only the default for a tile that names none.
+pullauta_ini: optimize_params/params/pullauta.bayern-las14.ini
+vectorconf: kp/osm.txt
 
 grid_size: 16
 pullauta_processes: 16 

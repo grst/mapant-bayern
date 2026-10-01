@@ -9,15 +9,12 @@ import {
   attributionText,
   createStyle,
   MAP_MIN_ZOOM,
-  MAPANT_TILES_URL,
-  TILES_MAX_ZOOM,
-  TILES_MIN_ZOOM,
   type OptionalLayer,
   type Visibility,
 } from './layers';
 import {createMap, domControl} from './map';
 import {exportPdf} from './print';
-import {exportOcd, xyzSource} from './ocd';
+import {archiveSource, exportOcd} from './ocd';
 import {MAP_CRS, OCD_TEMPLATE_URL} from './ocd/config';
 import {gridZoneFor} from './ocd/proj';
 import {readState, writeState, type AppState, type LayerCode} from './urlstate';
@@ -118,7 +115,7 @@ map.addControl(
           const result = await exportOcd({
             ...settings,
             center: viewCenter(),
-            source: xyzSource(MAPANT_TILES_URL, TILES_MIN_ZOOM, TILES_MAX_ZOOM),
+            source: archiveSource(),
             template: await response.arrayBuffer(),
             crs: MAP_CRS,
             gridZone: gridZoneFor(MAP_CRS),

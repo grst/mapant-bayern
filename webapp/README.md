@@ -23,8 +23,9 @@ The first test run needs the browser: `npx playwright install --with-deps chromi
 | --- | --- |
 | `index.html`, `about.html` | the two pages; no client-side routing |
 | `src/layers.ts` | the map's style (sources and layers) and the copyright notices |
-| `src/isomstyle.ts` | the ISOM style of isom-maplibre, bridged onto mapant-nf's tiles |
-| `src/tilemerge.ts` | serves the pyramid to MapLibre one level deeper than it would read it |
+| `src/archive.ts` | the map's PMTiles archive: where it is, its header, its tiles |
+| `src/isomstyle.ts` | the ISOM style of isom-maplibre, pointed at the archive |
+| `src/tilemerge.ts` | serves a print map the archive's deepest tiles at any zoom |
 | `src/map.ts` | map, controls and the switchable layers |
 | `src/geo.ts` | web mercator and the sphere maths for measuring |
 | `src/urlstate.ts` | the share link: `#map=zoom/lat/lon&layers=…&lang=…&d=…` |
@@ -54,8 +55,10 @@ plugin in `vite.config.ts`.
   pixels comes out on paper at its size on screen.
 * What the pixel ratio does not change is which tiles MapLibre reads: it picks them from the zoom
   alone, which would give a page the tiles a screen at that scale gets. The print style therefore
-  reads the orienteering map from the pyramid's deepest level at any scale (`mapant-print-tiles` in
-  `src/layers.ts`), and declares the terrain tiles smaller than they are to get the finest ones.
+  reads the orienteering map from the archive's deepest level at any scale (`mapant-print-tiles` in
+  `src/layers.ts`: each tile merged from the deepest tiles under it by `src/tilemerge.ts`, which
+  rewrites the protobuf -- tag tables joined, geometry offset into its quadrant), and declares the
+  terrain tiles smaller than they are to get the finest ones.
 * Safari caps a canvas at about 16.7 million pixels, well under an A4 page at 600 dpi, and silently
   ignores drawing beyond it; WebGL has a limit of its own on the drawing buffer. The export probes
   both and steps down to 400 or 300 dpi if the browser will not hand out what it needs.
@@ -68,31 +71,28 @@ ask for one; the export gives the print map another frame while it waits, or it 
 
 ## The orienteering map
 
-The map is drawn from the vector pyramid that mapant-nf publishes as `tiles_vector/`
-(`--vector_tiles true`), served as static files from an R2 bucket (`MAPANT_TILES_URL` in
-`src/layers.ts`), in the ISOM 2017-2 style of [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
+The map is drawn from the PMTiles archive mapant-nf publishes (`map/mapant.pmtiles`), read with HTTP
+range requests from an R2 bucket (`MAPANT_PMTILES_URL` in `src/archive.ts`), in the ISOM 2017-2 style
+of [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
 
-* **The style does not fit the tiles as they are.** isom-maplibre expects one source per table
-  (`contours`, `vegetation_areas`, `paths`, …) with an `isom_code` such as `"403.000"`; the pyramid is
-  one source whose layers are karttapullautin's outputs, with karttapullautin's `isom` – ISOM 2017-2
-  for the terrain, ISOM 2000 for the OpenStreetMap shapes. `src/isomstyle.ts` repeats each of the
-  style's layers for every tile layer that can hold its symbol, with a lookup from `isom` to the style's
-  code. The translation is the OCAD export's, so the two agree. `HANDOFF-isom-maplibre.md` in the
-  repository root lists what mapant-nf would change so this goes away.
-* **The pyramid is cut for 256 px tiles; MapLibre only takes 512.** Read as they are, every level would
-  show one zoom later than it is generalised for – form lines and knolls only at about 1:3000. So
-  `src/tilemerge.ts` answers each tile MapLibre asks for with the pyramid's four tiles one level deeper,
-  merged by rewriting the protobuf (tag tables joined, geometry offset into its quadrant). All zooms in
-  the code are MapLibre's; the share link keeps the 256 px convention OpenStreetMap uses, one higher.
+* **The archive is in the style's schema**: a layer per table (`contours`, `vegetation_areas`,
+  `paths`, …), each feature with its ISOM 2017-2 `isom_code` (`"403.000"`), 512 px tiles. The style's
+  layers are used as they are; `src/isomstyle.ts` only points all of them at the one source, where the
+  style expects one source per table.
+* Below z13 the style draws its overview pass, from the same source. The archive's shallowest level is
+  an overview without contours; below it OpenStreetMap's raster takes over (`MAP_MIN_ZOOM`, from the
+  archive's header, which `src/archive.ts` reads before the style is built).
 * Fills draw polygons only and lines draw lines only: MapLibre would otherwise fill an open line, and
-  trace the edges the merged children were cut at.
-* The style's background is not used, and white paper is drawn only where the pyramid has tiles, from
-  a `coverage.geojson` next to them; `node scripts/vector-coverage.mjs <tiles_vector dir>` writes it,
-  and it is uploaded with the tiles. The tile bounds come from the pyramid's `metadata.json`.
+  trace the edges a polygon was clipped at.
+* The style's background is not used: the white paper is the archive's `coverage` layer, the footprint
+  of the tiles that were rendered, so the rest of the viewport stays empty.
 * The style's pattern and symbol images are rasterised from isom-maplibre's SVGs as MapLibre asks for
   them, at the screen's or the print's pixel ratio.
-* The bucket has to send CORS headers for any origin that serves the app other than the bucket
-  itself (the GitHub Pages domain, `localhost` during development).
+* The bucket has to send CORS headers, including `Range` and `ETag`, for any origin that serves the
+  app other than the bucket itself (the GitHub Pages domain, `localhost` during development).
+* To look at another archive -- a test run of mapant-nf, say -- put it in `public/` and start the dev
+  server with `VITE_MAPANT_PMTILES=/mapant.pmtiles npm run dev`. Vite's dev server answers range
+  requests.
 
 ## OCAD export
 
@@ -101,22 +101,21 @@ is going to survey the area. `src/ocd/` does the whole conversion in the browser
 backend and no WebAssembly, because an A4 page is a few dozen vector tiles and a few megabytes of
 `DataView` writes.
 
-* The data comes from the same vector pyramid the map is drawn from (`MAPANT_TILES_URL` in
-  `src/layers.ts`), read directly rather than through the tile merging above. `src/ocd/config.ts` holds the template URL and the target coordinate system.
+* The data comes from the same archive the map is drawn from (`src/archive.ts`), read directly
+  rather than through the tile merging above. `src/ocd/config.ts` holds the template URL and the
+  target coordinate system.
 * It always reads the **deepest** zoom, the only level that carries the map as karttapullautin
   rendered it. Every level above it is deliberately generalised for the screen -- form lines and
   knolls left off, the vegetation traced from a coarser grid, the cliff hatching sampled -- which is
   right for an overview and wrong for a map to survey from.
-* A tile that answers with something that is not a vector tile costs its own square and no more. A
-  host that serves its index page instead of a 404 for a tile the pyramid does not have is the
-  usual reason, and it used to end the export in the protobuf parser.
+* A tile that does not decode as a vector tile costs its own square and no more.
 * Tiles carry a buffer of their neighbours' geometry, so every feature is first clipped to its own
   tile square -- the pieces from adjacent tiles then abut instead of overlapping -- and the line
   pieces that met at a border are stitched back into one line (`src/ocd/geometry.ts`).
-* karttapullautin's classes are translated to ISOM 2017-2 symbols in `src/ocd/isom.ts`. Where it
-  emits ISOM 2000 codes for OpenStreetMap shapes, the translation is OpenOrienteering Mapper's own
-  crosswalk table. Two mappings are judgement rather than translation and are marked as such: which
-  green shade counts as slow running, walk or fight, and what undergrowth means.
+* Every feature carries its ISOM 2017-2 symbol as `isom_code`; mapant-nf has already translated the
+  OpenStreetMap shapes from ISOM 2000 with OpenOrienteering Mapper's crosswalk. `src/ocd/isom.ts`
+  only spells it the template's way (`"521.001"` is 521.1) and splits what the style draws as one by
+  geometry: a lake (301.1) and its bank line (301.4).
 * The file is written by appending to `public/templates/isom2017-2_10000.ocd`
   (`src/ocd/ocdwriter.ts`). An OCD object can only reference a symbol defined in the same file, so
   the template supplies the symbol set and colour table; the writer keeps its bytes verbatim,
@@ -126,7 +125,7 @@ backend and no WebAssembly, because an A4 page is a few dozen vector tiles and a
 * The result is georeferenced in the LiDAR's own projected system (ETRS89 / UTM zone 32N for
   Bavaria), so coordinates are the surveyor's own rather than Web Mercator's stretched ones.
 
-`tests/ocd.spec.ts` exports a page from nine real vector tiles and reads the result back with
+`tests/ocd.spec.ts` exports a page from a small real archive and reads the result back with
 [ocad2geojson](https://github.com/perliedman/ocad2geojson) -- a different implementation of the
 format -- checking the version, that every object references a defined symbol, and that the
 georeferencing lands in the right UTM range.

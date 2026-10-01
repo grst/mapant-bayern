@@ -20,6 +20,7 @@
     "maplibre-gl": "^6.11.2",
     "marked": "^18.0.9",
     "pbf": "^5.1.2",
+    "pmtiles": "^4.5.0",
     "proj4": "^2.22.0"
   },
   "devDependencies": {

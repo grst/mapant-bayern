@@ -3,12 +3,13 @@
  *
  * The whole conversion happens in the browser, from the same vector tiles the map is drawn from:
  * read the tiles covering the print rectangle at the deepest zoom, clip them to it, put back
- * together the lines that tiling cut apart, translate karttapullautin's classes into ISOM symbols,
- * and write an OCD 12 file around a template that supplies the symbol set.
+ * together the lines that tiling cut apart, spell each feature's ISOM code the way the symbol set
+ * does, and write an OCD 12 file around a template that supplies the symbol set.
  *
- * Reading the *deepest* zoom matters: that is the only level the pyramid is guaranteed complete at.
- * Above it tippecanoe thins the densest features to keep tiles small, which is right for a screen
- * and wrong for a map you are going to survey from.
+ * Reading the *deepest* zoom matters: that is the only level that carries the map as
+ * karttapullautin rendered it. Every level above it is generalised for the screen -- form lines
+ * and knolls left off, contours thinned -- which is right for an overview and wrong for a map you
+ * are going to survey from.
  */
 
 import type {Orientation} from '../print';
@@ -110,7 +111,7 @@ export async function exportOcd(request: OcdExportRequest): Promise<OcdExportRes
     const own = tileRect(zoom, tile.x, tile.y);
 
     for (const feature of tile.features) {
-      const symbol = symbolFor(feature.layer, feature.properties);
+      const symbol = symbolFor(feature.properties, feature.geometry.kind);
       if (!symbol) {
         continue;
       }
@@ -195,5 +196,5 @@ function pointFromLine(
   };
 }
 
-export {xyzSource} from './source';
+export {archiveSource} from './source';
 export type {VectorSource} from './source';

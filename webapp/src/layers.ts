@@ -6,49 +6,45 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl';
+import {ARCHIVE, fetchTile, MAPANT_SOURCE_URL} from './archive';
 import {isomLayers} from './isomstyle';
 import {registerMergedTiles} from './tilemerge';
 
-/**
- * The orienteering map: the vector pyramid mapant-nf publishes as `tiles_vector/`, with the
- * footprint `scripts/vector-coverage.mjs` adds next to it.
- */
-const MAPANT_TILES_BASE = 'https://pub-77421d3fb5d34fc09d670e81f6c2dadf.r2.dev/vtiles/';
-export const MAPANT_TILES_URL = `${MAPANT_TILES_BASE}{z}/{x}/{y}.pbf`;
-const MAPANT_METADATA_URL = `${MAPANT_TILES_BASE}metadata.json`;
-
-/**
- * Where the pyramid has tiles, as one MultiPolygon in lon/lat. The paper is drawn only there, so
- * the rest of the viewport stays empty.
- */
-const MAPANT_COVERAGE_URL = `${MAPANT_TILES_BASE}coverage.geojson`;
-
-/** The pyramid's tile levels. The deepest is the only one that carries the full map. */
-export const TILES_MIN_ZOOM = 12;
-export const TILES_MAX_ZOOM = 16;
-
-/**
- * MapLibre is handed each tile merged from the pyramid's four one level deeper (see
- * tilemerge.ts), so map zoom z shows tile level z + 1, the way a 256 px tile map would. All map
- * zooms in the app are MapLibre's; only the share link keeps the 256 px convention (urlstate.ts).
- */
-registerMergedTiles({scheme: 'mapant-tiles', template: MAPANT_TILES_URL, levels: () => 1});
+/** The archive's tile levels. The deepest is the only one that carries the full map. */
+export const TILES_MIN_ZOOM = ARCHIVE.minZoom;
+export const TILES_MAX_ZOOM = ARCHIVE.maxZoom;
 
 /**
  * For a print: the deepest level, whatever the zoom. MapLibre picks the tile level from the zoom
  * alone, so a print map -- at the zoom of its scale and a high pixel ratio -- would otherwise get
- * the tiles a screen at that scale does, generalised for 96 dpi.
+ * the tiles a screen at that scale does, generalised for 96 dpi. Each tile it asks for is merged
+ * from the deepest tiles under it (tilemerge.ts).
  */
 registerMergedTiles({
   scheme: 'mapant-print-tiles',
-  template: MAPANT_TILES_URL,
-  levels: (z) => Math.max(1, TILES_MAX_ZOOM - z),
+  fetchTile: (z, x, y, signal) => {
+    // Which level a print reads, where the tests can see it: the archive's range requests do not say.
+    performance.mark('mapant-print-tile', {detail: {z}});
+    return fetchTile(z, x, y, signal);
+  },
+  levels: (z) => Math.max(0, TILES_MAX_ZOOM - z),
 });
 
-/** Map zoom from which the orienteering map is shown, and below which OpenStreetMap is. */
-export const MAP_MIN_ZOOM = TILES_MIN_ZOOM - 1;
+/** The print map's source, as TileJSON: the archive's zooms and bounds, read through the merge. */
+addProtocol('mapant-print', async () => ({
+  data: {
+    tilejson: '3.0.0',
+    tiles: ['mapant-print-tiles://{z}/{x}/{y}'],
+    minzoom: TILES_MIN_ZOOM,
+    maxzoom: TILES_MAX_ZOOM,
+    ...(ARCHIVE.bounds ? {bounds: ARCHIVE.bounds} : {}),
+  },
+}));
 
-/** Deepest map zoom. Beyond the pyramid's last level the tiles are drawn overzoomed. */
+/** Map zoom from which the orienteering map is shown, and below which OpenStreetMap is. */
+export const MAP_MIN_ZOOM = TILES_MIN_ZOOM;
+
+/** Deepest map zoom. Beyond the archive's last level the tiles are drawn overzoomed. */
 export const MAP_MAX_ZOOM = 17;
 
 /** Highest zoom level Mapterhorn's terrain tiles are available at. */
@@ -71,35 +67,6 @@ const MAPANT_ATTRIBUTION = [
 
 const MAPTERHORN_ATTRIBUTION =
   '© <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>';
-
-/**
- * The pyramid as TileJSON, with the bounds from the `metadata.json` mapant-nf writes next to it.
- * They keep the map from asking for tiles outside the mapped area, each of which would be a 404.
- * Served through a custom protocol because the style has to be built before the metadata has
- * arrived; if it never does, the tiles are still read, just without the bounds.
- */
-let bounds: Promise<number[] | undefined> | undefined;
-addProtocol('mapant', async (request) => {
-  bounds ??= fetch(MAPANT_METADATA_URL)
-    .then((response) => (response.ok ? response.json() : {}))
-    .catch(() => ({}))
-    .then((metadata: {bounds?: string}) => {
-      const parsed = metadata.bounds?.split(',').map(Number);
-      return parsed?.length === 4 && parsed.every(Number.isFinite) ? parsed : undefined;
-    });
-  const known = await bounds;
-  const scheme = request.url === 'mapant://print' ? 'mapant-print-tiles' : 'mapant-tiles';
-  return {
-    data: {
-      tilejson: '3.0.0',
-      tiles: [`${scheme}://{z}/{x}/{y}`],
-      // One level up, since each tile is read from the level below it.
-      minzoom: TILES_MIN_ZOOM - 1,
-      maxzoom: TILES_MAX_ZOOM - 1,
-      ...(known ? {bounds: known} : {}),
-    },
-  };
-});
 
 /** The layers a visitor can switch on and off. The tile grid is not a layer but a debug view. */
 export type OptionalLayer = 'hillshade' | 'places' | 'grid';
@@ -138,8 +105,7 @@ export function createStyle(options: StyleOptions): StyleSpecification {
       tileSize: 256,
       maxzoom: 19,
     },
-    mapant: {type: 'vector', url: options.print ? 'mapant://print' : 'mapant://screen'},
-    coverage: geojson(MAPANT_COVERAGE_URL),
+    mapant: {type: 'vector', url: options.print ? 'mapant-print://' : MAPANT_SOURCE_URL},
     dem: {
       type: 'raster-dem',
       tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
@@ -157,7 +123,7 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     // Only below the orienteering map (a layer's maxzoom is exclusive, its minzoom inclusive),
     // so nothing is ever fetched from openstreetmap.org while the orienteering map is on screen.
     {id: 'osm', type: 'raster', source: 'osm', maxzoom: MAP_MIN_ZOOM},
-    ...isomLayers({source: 'mapant', coverageSource: 'coverage', minZoom: MAP_MIN_ZOOM}),
+    ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}),
     {
       id: 'hillshade',
       type: 'hillshade',

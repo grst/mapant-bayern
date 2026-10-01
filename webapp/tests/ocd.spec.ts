@@ -1,15 +1,8 @@
-import {existsSync, readFileSync} from 'node:fs';
-import {join} from 'node:path';
 import {expect, test, type Page} from '@playwright/test';
 // The reference reader for the format, used here to check the writer against something that is not
 // itself. AGPL, so it stays a test dependency and is never bundled into the app.
 import {ocadToGeoJson, readOcad} from 'ocad2geojson';
-
-/**
- * Nine real vector tiles around Immenstadt, enough to cover an A4 page at 1:4000. Cut by
- * `mapant-nf -profile test_immenstadt --vector_tiles true`; see tests/fixtures/vtiles/README.md.
- */
-const FIXTURES = join(import.meta.dirname, 'fixtures', 'vtiles');
+import {serveArchive} from './archive';
 
 async function stubTiles(page: Page): Promise<void> {
   const png = Buffer.from(
@@ -19,18 +12,10 @@ async function stubTiles(page: Page): Promise<void> {
   await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
-  await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
-
-  // The vector pyramid is not part of the built site, so it is served from the fixtures. A tile
-  // the fixture does not have answers 404, exactly as the real sparse pyramid does outside its
-  // coverage -- which is also what the export has to tolerate.
-  await page.route('**/vtiles/**', (route) => {
-    const path = new URL(route.request().url()).pathname.replace(/^.*\/vtiles\//, '');
-    const file = join(FIXTURES, path);
-    return existsSync(file)
-      ? route.fulfill({status: 200, contentType: 'application/x-protobuf', body: readFileSync(file)})
-      : route.fulfill({status: 404, body: ''});
-  });
+  // The map's archive is not part of the built site, so it is served from the fixture, which
+  // covers an A4 page at 1:4000 around Immenstadt and nothing else -- outside it the archive has
+  // no tiles, exactly as the real one has none outside the mapped area.
+  await serveArchive(page);
 }
 
 async function openPrintPanel(page: Page): Promise<void> {
@@ -71,6 +56,9 @@ test('exports the print area as an OCAD file built on the ISOM symbol set', asyn
   expect(symbols).toContain(102000); // index contour
   expect([...symbols].some((symbol) => symbol === 201000 || symbol === 202000)).toBe(true); // cliff
   expect([...symbols].some((symbol) => Math.floor(symbol / 1000) >= 401 && Math.floor(symbol / 1000) <= 410)).toBe(true); // vegetation
+  // The OpenStreetMap shapes, in ISOM 2017-2 as mapant-nf translated them.
+  expect(symbols).toContain(521000); // building
+  expect([...symbols].some((symbol) => symbol >= 502000 && symbol <= 506000)).toBe(true); // roads and paths
 
   // Every object references a symbol the file actually defines; a dangling reference is what OCAD
   // reports as a damaged object.
@@ -123,36 +111,9 @@ test('exports the print area as an OCAD file built on the ISOM symbol set', asyn
   expect(extent.minY).toBeLessThan(0);
 });
 
-test('a tile that is not a tile costs its own square, not the whole export', async ({page}, testInfo) => {
-  await stubTiles(page);
-  // A static host that answers a missing tile with its index page instead of a 404 -- which is
-  // what a dev server and some CDNs do -- used to end the export in the protobuf parser.
-  await page.route('**/vtiles/16/34627/**', (route) =>
-    route.fulfill({status: 200, contentType: 'text/html', body: '<!doctype html><title>404</title>'}),
-  );
-  await openPrintPanel(page);
-
-  const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
-  const warnings: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'warning') {
-      warnings.push(message.text());
-    }
-  });
-  await page.locator('.print-export-ocd').click();
-  const download = await downloadPromise;
-
-  const file = testInfo.outputPath('partial.ocd');
-  await download.saveAs(file);
-  const ocad = await readOcad(file);
-  expect(ocad.objects.length).toBeGreaterThan(0);
-  // And it says so rather than pretending the pyramid had a hole there.
-  expect(warnings.join(' ')).toMatch(/3 tile\(s\) were not readable/);
-});
-
 test('an area with no tiles under it says so rather than saving an empty file', async ({page}) => {
   await stubTiles(page);
-  // Far outside the fixture: every tile request answers 404.
+  // Far outside the fixture: the archive has no tile there.
   await page.goto('/#map=15/47.9000/11.5000&layers=l&lang=en');
   await expect(page.locator('#map canvas').first()).toBeVisible();
   await page.getByRole('button', {name: 'Export as PDF'}).first().click();

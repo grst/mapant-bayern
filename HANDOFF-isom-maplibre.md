@@ -1,5 +1,16 @@
 # Handoff: mapant-nf tiles for isom-maplibre
 
+> **Done (2026-10-01)**, apart from §4 (cliffs) and the style question in §6. mapant-nf writes one
+> PMTiles archive in the style's schema: a layer per table, `isom_code` in ISOM 2017-2 (OSM codes
+> through Mapper's crosswalk, keyed on the code), `layer`/`isom` kept, 512 px tiles cut at an 8192
+> extent, a contour-free overview level at `base_zoom - 1`, a `coverage` layer, and a header with the
+> region's bounds and centre (no TileJSON is needed: PMTiles is read through its header). Contours,
+> form lines and knolls are left out under lakes by karttapullautin itself (`contour_mask`, keyed on
+> the rules file's `lake` category, so rivers keep theirs); the green screens are not clipped. The
+> webapp reads the archive directly: `isomstyle.ts` only points the style at one source,
+> `tilemerge.ts` is left for the print path, and the `mapant://` protocol and
+> `scripts/vector-coverage.mjs` are gone. What follows is the note as it was written.
+
 **Status (2026-09-28):** the mapant-bayern webapp now draws the orienteering map with MapLibre and the
 [isom-maplibre](https://github.com/MetsaApp/isom-maplibre) style (`@metsa/isom-maplibre` 0.1.0), reading
 the Allgäu pyramid on R2 as it is. The pyramid does not match the schema the style expects. The webapp

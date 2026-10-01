@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {expect, test, type Page} from '@playwright/test';
+import {serveArchive} from './archive';
 
 /** Same stubs as the smoke tests: the app is what is under test, not the tile hosts. */
 async function stubTiles(page: Page, terrainZooms?: number[]): Promise<void> {
@@ -84,23 +85,21 @@ test('fetches tiles at the density of the paper, not of the screen', async ({pag
 });
 
 /**
- * The same for the orienteering map: whatever the scale, a page is drawn from the
- * pyramid's deepest level, the only one that carries form lines and knolls. The
- * live map at this zoom reads z14.
+ * The same for the orienteering map: whatever the scale, a page is drawn from the archive's
+ * deepest level, the only one that carries form lines and knolls. The live map at this zoom reads
+ * z14; the fixture's deepest level is z15.
  */
 test('draws the orienteering map from the deepest tiles', async ({page}) => {
   await stubTiles(page);
-  const levels: number[] = [];
-  await page.route(/r2\.dev\/vtiles\/\d+\//, (route) => {
-    levels.push(Number(/vtiles\/(\d+)\//.exec(route.request().url())![1]));
-    return route.fulfill({status: 404, body: ''});
-  });
+  await serveArchive(page);
   await openPrintPanel(page, 'l');
 
-  await page.waitForTimeout(500);
-  levels.length = 0;
   await page.locator('.print-export').click();
 
-  await expect.poll(() => levels.length, {timeout: 60_000}).toBeGreaterThan(12);
-  expect([...new Set(levels)]).toEqual([16]);
+  const levels = () =>
+    page.evaluate(() =>
+      performance.getEntriesByName('mapant-print-tile').map((entry) => (entry as PerformanceMark).detail.z as number),
+    );
+  await expect.poll(async () => (await levels()).length, {timeout: 60_000}).toBeGreaterThan(12);
+  expect([...new Set(await levels())]).toEqual([15]);
 });

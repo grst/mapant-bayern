@@ -1,14 +1,10 @@
 /**
- * Serving mapant-nf's pyramid to MapLibre one level deeper than MapLibre would read it.
+ * Serving a print map the archive's deepest tiles, whatever its zoom.
  *
- * The pyramid is cut for 256 px tiles: each level is generalised for the screen resolution at
- * which a 256 px tile shows it, and only the deepest carries the full map. MapLibre shows vector
- * tiles at 512 px and will not be told otherwise, so read as they are every level would appear one
- * zoom later -- the form lines and knolls only at 1:3000. So MapLibre is handed tiles it believes
- * to be level z, each merged from the pyramid's four tiles of level z + 1 that cover the same
- * square, which puts every level on screen at the scale it was made for.
- *
- * A print goes further and reads the deepest level whatever the zoom: `levels` then spans the gap.
+ * MapLibre picks the tile level from the zoom alone, so a print at the zoom of its scale would get
+ * the tiles a screen at that scale gets -- generalised for the screen, without form lines and
+ * knolls. So the print map is handed tiles it believes to be level z, each merged from the
+ * archive's tiles `levels(z)` deeper that cover the same square.
  *
  * Merging is a rewrite of the protobuf, not a decode into features: each child's layers are
  * appended to the merged tile's layer of the same name, with the tag indices shifted onto the
@@ -200,41 +196,35 @@ function encode(layers: Map<string, MergedLayer>, extent: number): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
-async function fetchTile(url: string, signal: AbortSignal): Promise<ArrayBuffer | null> {
-  const response = await fetch(url, {signal});
-  // A missing tile is simply outside the mapped area; anything else that is not a tile (a host's
-  // HTML error page) is skipped the same way rather than failing the whole square.
-  if (!response.ok || (response.headers.get('content-type') ?? '').startsWith('text/')) {
-    return null;
-  }
-  return response.arrayBuffer();
-}
-
-/** The extent the children are written at: tippecanoe's default, which mapant-nf keeps. */
-const CHILD_EXTENT = 4096;
+/** The extent the children are written at: mapant-nf cuts its 512 px tiles at 8192. */
+const CHILD_EXTENT = 8192;
 
 export interface MergedTilesOptions {
   /** URL scheme MapLibre asks for tiles under: `<scheme>://{z}/{x}/{y}`. */
   scheme: string;
-  /** The pyramid, as an `{z}/{x}/{y}` URL template. */
-  template: string;
+  /** One tile of the archive, or null where it has none. */
+  fetchTile(z: number, x: number, y: number, signal: AbortSignal): Promise<ArrayBuffer | null>;
   /** How many levels deeper to read, for a tile of level z. */
   levels(z: number): number;
 }
 
-export function registerMergedTiles({scheme, template, levels}: MergedTilesOptions): void {
+export function registerMergedTiles({scheme, fetchTile, levels}: MergedTilesOptions): void {
   addProtocol(scheme, async (request, abortController) => {
     const [z, x, y] = request.url.replace(`${scheme}://`, '').split('/').map(Number);
     const depth = levels(z);
+    if (depth === 0) {
+      return {data: (await fetchTile(z, x, y, abortController.signal)) ?? new ArrayBuffer(0)};
+    }
     const span = 2 ** depth;
     const children: Promise<{column: number; row: number; data: ArrayBuffer | null}>[] = [];
     for (let row = 0; row < span; row++) {
       for (let column = 0; column < span; column++) {
-        const url = template
-          .replace('{z}', String(z + depth))
-          .replace('{x}', String(x * span + column))
-          .replace('{y}', String(y * span + row));
-        children.push(fetchTile(url, abortController.signal).then((data) => ({column, row, data})));
+        children.push(
+          fetchTile(z + depth, x * span + column, y * span + row, abortController.signal)
+            // A child that cannot be read costs its own square, not the whole tile.
+            .catch(() => null)
+            .then((data) => ({column, row, data})),
+        );
       }
     }
 

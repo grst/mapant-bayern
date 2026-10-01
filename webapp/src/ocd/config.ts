@@ -1,6 +1,6 @@
 /**
- * Where the OCD export gets its inputs besides the vector tiles (see `MAPANT_TILES_URL` in
- * layers.ts). Static files, so this stays a site with no backend.
+ * Where the OCD export gets its inputs besides the vector tiles (see `MAPANT_PMTILES_URL` in
+ * archive.ts). Static files, so this stays a site with no backend.
  */
 
 /**
