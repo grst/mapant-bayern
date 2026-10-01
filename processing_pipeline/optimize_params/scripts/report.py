@@ -316,6 +316,16 @@ BORDER_LABEL = {
     "gen:las12-balanced,las14-balanced": "recommended, per generation",
     "las14-balanced": "las14 set on all tiles",
     "gen:las12-detail,las14-balanced": "las12-detail + las14",
+    "gen:las12-match-r1,las14-r1": "round 3: r1 + matched",
+    "gen:las12-match-balanced,las14-balanced": "round 3: balanced + matched",
+    "gen:las12-match-clean,las14-clean": "round 3: clean + matched",
+    "s:kp_default,kp_default": "kp default",
+    "s:las12-r1,las14-r1": "round 1",
+    "s:las12-balanced,las14-balanced": "round 2 balanced",
+    "s:las12-match-r1,las14-r1": "round 3: r1 + matched",
+    "s:las12-match-balanced,las14-balanced": "round 3: balanced + matched",
+    "s:las12-match-clean,las14-clean": "round 3: clean + matched",
+    "s:las12-match-balanced-sub3,las14-balanced-sub3": "round 3: 7 shades + matched",
 }
 
 
@@ -332,7 +342,7 @@ def border_strip(bd: pd.DataFrame, names: list[str], key: str, xlabel: str) -> s
         return ml + (min(max(v, x0), x1) - x0) / (x1 - x0) * (W - ml - mr)
 
     p = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{esc(xlabel)}" class="chart">']
-    step = 0.2 if lim > 0.45 else (0.1 if lim > 0.25 else 0.05)
+    step = 0.5 if lim > 1.0 else (0.2 if lim > 0.45 else (0.1 if lim > 0.25 else 0.05))
     t = math.ceil(x0 / step) * step
     while t <= x1 + 1e-9:
         cls = "zero" if abs(t) < 1e-9 else "grid"
@@ -413,7 +423,7 @@ def build(mode: str) -> Path:
          '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&'
          'family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">',
          f"<style>{CSS}</style><main>",
-         '<p class="kicker" style="margin-top:48px">mapant-bayern · karttapullautin #3 (c2a060f) · vector output · round 2</p>',
+         '<p class="kicker" style="margin-top:48px">mapant-bayern · karttapullautin #3 (c2a060f) · vector output · round 3</p>',
          "<h1>Mapant Bayern Parameter Study</h1>", '<div class="col">']
     lede = (f'Karttapullautin’s defaults get the amount of green wrong in opposite directions depending on which '
             f'LiDAR generation a tile comes from. Tuned separately for the two generations and checked against '
@@ -606,9 +616,9 @@ def build(mode: str) -> Path:
                  f"with the scanning campaign, so the mean step over many blocks estimates the seam a parameter set leaves.</p>"
                  f"<p>With kp’s defaults the LAS 1.4 side is {m0 * 100:+.0f} ± {se0 * 100:.0f} percentage points greener on "
                  f"average (typical absolute step {a0 * 100:.0f} points). With the recommended pair it is {m1 * 100:+.0f} ± "
-                 f"{se1 * 100:.0f} points (absolute {a1 * 100:.0f}). This was only measured, not optimised: the sets were "
-                 f"chosen for agreement with the maps.</p></div>")
-        names = [n for n in BORDER_LABEL if n in set(bd.set)]
+                 f"{se1 * 100:.0f} points (absolute {a1 * 100:.0f}). Rounds 1 and 2 only measured this; round 3 optimises "
+                 f"for it.</p></div>")
+        names = [n for n in BORDER_LABEL if n in set(bd.set) and not n.startswith("s:")]
         h.append(f"<figure>{border_strip(bd, names, 'green_share', 'green share, LAS 1.4 side minus LAS 1.2 side')}"
                  "<figcaption>Each dot is one block, the bar the mean. Zero means both sides equally green.</figcaption></figure>")
         rows = []
@@ -622,12 +632,12 @@ def build(mode: str) -> Path:
                  'standard error, and mean absolute step. Green level is the mean ISOM level over non-open area '
                  '(0 white … 3 = 410).</caption><thead><tr><th>set</th><th>green share</th><th>|·|</th><th>green level</th>'
                  '<th>|·|</th><th>open share</th><th>|·|</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table></div>")
-        md, sed, _ = bstep("gen:las12-detail,las14-balanced") if "gen:las12-detail,las14-balanced" in set(bd.set) else (float("nan"),) * 3
-        h.append(f"<div class='col'><p>Round 1’s pair left a smaller step ({bstep('gen:las12-r1,las14-r1')[0] * 100:+.0f} points) "
-                 f"than round 2’s, because round 2’s LAS 1.4 set draws more green. Pairing it with <code>las12-detail</code> "
-                 f"closes the seam ({md * 100:+.0f} ± {sed * 100:.0f} points), but that set agrees less with the LAS 1.2 "
-                 f"holdout maps. Agreement with the maps was given priority, so the recommendation stays; "
-                 f"<code>las12-detail</code> is the option if the seam matters more.</p></div>")
+        r1m = bstep("gen:las12-r1,las14-r1")[0]
+        h.append(f"<div class='col'><p>Over all {nb} blocks every tuned pair leaves a mean step within a few points of "
+                 f"zero (round 1 {r1m * 100:+.0f}, round 2 {m1 * 100:+.0f}), against {m0 * 100:+.0f} with kp’s defaults or "
+                 f"with the LAS 1.4 set on every tile. Across whole tiles and all land this measure is coarse: the typical "
+                 f"per-block step ({a1 * 100:.0f} points) is mostly real landscape change. Round 3 below compares only "
+                 f"forest, in strips along the border, and also the green levels and the patchiness.</p></div>")
         bshots = sorted((ROOT / "work/e2e").glob("border_*/*/shot_*.png"))
         if bshots:
             h.append("<div class='col'><p>Production-path renders of blocks (kp batch → tippecanoe → viewer style). The "
@@ -652,6 +662,8 @@ def build(mode: str) -> Path:
                     h.append(f"<figure>{IM.tag(p, f'{bname} {lab}', 760, name=f'border_{bname}_{p.parent.name}')}"
                              f"<figcaption>Block {esc(bname)} ({where}), {lab}.{notes.get(bname, '') if lab == 'kp default' else ''}</figcaption></figure>")
                 h.append("</div>")
+
+    h += round3(IM, ev, mode)
 
     # yellow
     h.append("<h2>Open land</h2><div class='col'>")
@@ -740,6 +752,170 @@ def build(mode: str) -> Path:
     if mode == "offline":
         gallery_page(IM, gal)
     return p
+
+
+# ------------------------------------------------------------------ round 3
+
+MATCH = [("las14-r1", "las12-r1", "las12-match-r1"), ("las14-balanced", "las12-balanced", "las12-match-balanced"),
+         ("las14-clean", "las12-clean", "las12-match-clean"),
+         ("las14-balanced-sub3", "las12-balanced-sub3", "las12-match-balanced-sub3")]
+LAS12_SITES = ["auerbach", "kastensee", "kohlbruck", "schaufling", "hechenberg"]
+
+
+def round3(IM, ev: pd.DataFrame, mode: str) -> list[str]:
+    mp = ROOT / "results/match12.csv"
+    if not mp.exists():
+        return []
+    mm = pd.read_csv(mp)
+    s12 = json.loads((ROOT / "work/border/s12_stats.json").read_text())
+    s14 = json.loads((ROOT / "work/border/targets_strip.json").read_text())
+    blocks = yaml.safe_load((ROOT / "border.yaml").read_text())
+    nb = len(blocks)
+    hold = [n for n in sorted(blocks) if sorted(blocks).index(n) % 3 == 2]
+
+    def get(l14, l12, part, col):
+        d = mm[(mm.las14 == l14) & (mm.las12 == l12) & (mm.blocks == part)]
+        return float(d[col].iloc[0]) if len(d) else float("nan")
+
+    def best_other(l14, part="holdout"):
+        d = mm[(mm.las14 == l14) & (mm.blocks == part) & ~mm.las12.str.startswith("las12-match") & (mm.las12 != "las14-balanced")]
+        r = d.sort_values("objective").iloc[0]
+        return r.las12, float(r.objective)
+
+    h = ["<h2>Round 3: LAS 1.2 sets that match LAS 1.4</h2><div class='col'>",
+         "<p>LAS 1.4 has more and cleaner reference maps, so its sets are the better-founded ones. Round 3 takes each LAS 1.4 "
+         "set as given and searches the LAS 1.2 parameters that make a LAS 1.2 area look like the LAS 1.4 set draws the "
+         "area next to it, so that the two generations meet without a visible change of map style.</p>",
+         f"<p><b>Data.</b> {nb} border blocks (2 × 2 km, two tiles of each generation; 31 more than in round 2, the "
+         "Allgäu comparison area left out), split into 35 for the search and 17 held out. Only forest counts (OSM "
+         "<code>landuse=forest</code> / <code>natural=wood</code>), in a 300 m strip on each side of the border, so a "
+         "border that also runs along a forest edge is not a map difference. The LAS 1.2 strip is rendered from a cropped "
+         "point cloud of its two tiles plus kp’s 127 m buffer (agreeing with whole-tile runs on 96–99 % of the pixels).</p>",
+         "<p><b>Measure.</b> Per strip, the shares of white, 406, 408, 410 and open land, and the class boundary length "
+         "per forest area (how patchy the map looks). The mismatch of a LAS 1.2 set against a LAS 1.4 set is the "
+         "systematic part — the earth mover’s distance over the ordered levels white &lt; 406 &lt; 408 &lt; 410 of the "
+         "mean difference, plus the open-land difference, plus 0.2 × |mean log ratio| of the boundary density — plus "
+         "0.3 × the same per block, which rewards following the forest-to-forest variation of the LAS 1.4 side. One TPE "
+         "search per LAS 1.4 set (50 trials each, every render scored against all three); yellow and cliff keys stay as "
+         "in the sibling set. The 7-greenshade variant is derived from the matched balanced set as in round 2.</p></div>"]
+    rows = []
+    for l14, old12, new12 in MATCH:
+        bo, bov = best_other(l14)
+        rows.append(f"<tr><th scope='row'><code>{l14}</code></th><td><code>{new12}</code></td>"
+                    f"<td class='num'>{get(l14, new12, 'train', 'objective'):.3f}</td>"
+                    f"<td class='num'><b>{get(l14, new12, 'holdout', 'objective'):.3f}</b></td>"
+                    f"<td class='num'>{get(l14, old12, 'holdout', 'objective'):.3f}</td>"
+                    f"<td class='num'>{bov:.3f} <span class='muted'>({esc(bo)})</span></td>"
+                    f"<td class='num'>{get(l14, new12, 'holdout', 'green_step') * 100:+.1f} / {get(l14, old12, 'holdout', 'green_step') * 100:+.1f}</td>"
+                    f"<td class='num'>{get(l14, new12, 'holdout', 'edge_logratio'):+.2f} / {get(l14, old12, 'holdout', 'edge_logratio'):+.2f}</td></tr>")
+    h.append("<div class='tablewrap'><table><caption>Mismatch between the LAS 1.4 set and a LAS 1.2 set across the "
+             "border (lower is better). Train: the 35 search blocks; holdout: the 17 others. Green step: forest green "
+             "share, LAS 1.4 strip minus LAS 1.2 strip, in points (matched / round-2 sibling); patchiness: mean log ratio "
+             "of the boundary density (0 = equally patchy).</caption><thead><tr><th>LAS 1.4 set</th><th>matched LAS 1.2 "
+             "set</th><th>train</th><th>holdout</th><th>round-2 sibling, holdout</th><th>best earlier LAS 1.2 set, holdout"
+             "</th><th>green step</th><th>patchiness</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>")
+
+    # strip chart: per-block forest green share step
+    recs = []
+    for key in [k for k in BORDER_LABEL if k.startswith("s:")]:
+        a12, a14 = key[2:].split(",")
+        if a12 not in s12 or a14 not in s14:
+            continue
+        for b in blocks:
+            p12, p14 = s12[a12][b], s14[a14][b]
+            if min(p12["forest_px"], p14["forest_px"]) < 40_000:
+                continue
+            g = lambda p: sum(p["p"][1:4]) / max(1 - p["p"][4], 1e-6)
+            recs.append(dict(set=key, block=b, green_share_las12=g(p12), green_share_las14=g(p14),
+                             edges_las12=math.log(max(p12["edges"], 1e-6)), edges_las14=math.log(max(p14["edges"], 1e-6))))
+    sd = pd.DataFrame(recs)
+    if len(sd):
+        names = [k for k in BORDER_LABEL if k.startswith("s:") and k in set(sd.set)]
+        h.append(f"<figure>{border_strip(sd, names, 'green_share', 'forest green share in the border strips, LAS 1.4 minus LAS 1.2')}"
+                 f"<figcaption>Each dot is one block ({sd.block.nunique()} with enough forest in both strips; the 17 holdout "
+                 "blocks are among them), the bar the mean. The per-block spread is the real difference between "
+                 "neighbouring forests; the mean is the seam a pair leaves.</figcaption></figure>")
+        h.append(f"<figure>{border_strip(sd, names, 'edges', 'patchiness in the border strips, log(LAS 1.4 / LAS 1.2)')}"
+                 "<figcaption>Class boundary length per forest area, as a log ratio: +0.3 means the LAS 1.4 side has "
+                 "about 1.35 times as many patch edges. The amount of green was already close in rounds 1 and 2; how "
+                 "fragmented it is was not, and that is most of what round 3 changes.</figcaption></figure>")
+
+    # what it costs on the LAS 1.2 maps
+    e = ev[(ev.variant == "full") & ev.site.isin(LAS12_SITES)]
+    show = [x for x in ["kp_default", "las12-balanced", "las12-r1", "las12-match-r1", "las12-match-balanced",
+                        "las12-match-balanced-sub3", "las12-match-clean"] if x in set(e.set)]
+    if show:
+        kt = e.pivot_table(index="set", columns="site", values="green_kappa").reindex(show)
+        bt = e.pivot_table(index="set", columns="site", values="green_bias").reindex(show)
+        rows = []
+        for sname in show:
+            cells = "".join(f"<td class='num'>{kt.loc[sname, s_]:.2f} <span class='muted'>{bt.loc[sname, s_]:.1f}×</span></td>"
+                            for s_ in LAS12_SITES)
+            rows.append(f"<tr><th scope='row'><code>{sname}</code></th>{cells}<td class='num'><b>{kt.loc[sname].mean():.2f}</b></td></tr>")
+        h.append("<div class='tablewrap'><table><caption>The price on the LAS 1.2 reference maps: green-level kappa (and green "
+                 "amount relative to the map).</caption><thead><tr><th>set</th>"
+                 + "".join(f"<th>{esc(SITE_LABEL[s_])}</th>" for s_ in LAS12_SITES)
+                 + "<th>mean</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>")
+        k_old = kt.loc["las12-balanced"].mean() if "las12-balanced" in kt.index else float("nan")
+        k_r1 = kt.loc["las12-match-r1"].mean() if "las12-match-r1" in kt.index else float("nan")
+        k_b = kt.loc["las12-match-balanced"].mean() if "las12-match-balanced" in kt.index else float("nan")
+        k_0 = kt.loc["kp_default"].mean()
+        h.append(f"<div class='col'><p>Matching costs some agreement with the LAS 1.2 maps: mean kappa {k_old:.2f} with the "
+                 f"round-2 set, {k_b:.2f} matched to <code>las14-balanced</code>, {k_r1:.2f} matched to <code>las14-r1</code> "
+                 f"(kp default {k_0:.2f}). To look like the LAS 1.4 side, the LAS 1.2 sets have to draw more green than the "
+                 "LAS 1.2 maps show. Either the LAS 1.2 maps (five maps, two of them photos or scans, all in eastern and "
+                 "southern Bavaria) are mapped with less green, or the LAS 1.4 sets draw a little too much — the round-2 "
+                 "border check pointed the same way. The seam and the map agreement cannot both be maximised; the "
+                 "comparison viewer below is for judging which matters more.</p>"
+                 "<p>Files: <code>params/pullauta.bayern-las12-match-{r1,balanced,clean,balanced-sub3}.ini</code>, each to "
+                 "be paired with its LAS 1.4 set (<code>pullauta.bayern-las14-r1.ini</code>, <code>-las14.ini</code>, "
+                 "<code>-las14-clean.ini</code>, <code>-las14-balanced-sub3.ini</code>). The samplesheet column still points "
+                 "at the round-2 pair until a pair is chosen.</p></div>")
+
+    # comparison viewer
+    shots = sorted((ROOT / "work/compare/shots").glob("*.png"))
+    h.append("<h2>Comparison viewer</h2><div class='col'><p>Two areas rendered with every set in the report: Oberallgäu "
+             "(10.142–10.434 E, 47.536–47.771 N; 621 km², 369 LAS 1.2 + 252 LAS 1.4 tiles) and 6 × 6 km across the border "
+             "north of Würzburg (Gramschatzer Wald). Each tile gets one production batch run (WGS84 GeoJSON, cropped to "
+             "the tile) for contours and knolls; vegetation, yellow, undergrowth and cliffs of every set are run from its "
+             "kept point cloud, then cropped with kp’s own clipping code (ported line by line; GEOS clipping mangles "
+             "the polygons kp’s simplification leaves invalid) and reprojected. On a test tile that matches a "
+             "production run with the same set feature for feature. The tiles are cut by mapant-nf’s <code>make_vector_tiles.py</code> and drawn with the style "
+             "<code>make_viewer.py</code> makes, as in the vector version of the mapant-bayern webapp, with each set’s own "
+             "green tones. Any LAS 1.4 set can be combined with any LAS 1.2 set, in two synchronised maps.</p>"
+             "<p>Run: <code>python3 work/compare/serve.py</code> in <code>processing_pipeline/optimize_params/</code>, then "
+             "open <code>http://localhost:8765/</code> (it needs HTTP range requests, so opening the file directly does "
+             "not work). Everything is local except the optional OSM background. The map starts at zoom 12, as in "
+             "production; each area opens on a forested stretch of the generation border.</p></div>")
+    def figs(sel):
+        for p in sel:
+            cap = p.stem.replace("_", " ")
+            h.append(f"<figure class='wide'>{IM.tag(p, cap, 1560 if mode == 'offline' else 1300, quality=80, name='cmp_' + p.stem)}"
+                     f"<figcaption>{esc(SHOT_CAPTIONS.get(p.stem, cap))}</figcaption></figure>")
+
+    figs([p for p in shots if not p.stem.startswith("wuerzburg")])
+    if any(p.stem.startswith("wuerzburg") for p in shots):
+        h.append("<div class='col'><p><b>North of Würzburg the seam stays.</b> This block is the worst of the 52: with "
+                 "the matched pair the LAS 1.4 forest strip is still 57 points greener. The data differ more than any "
+                 "parameter set can make up: the LAS 1.2 tiles there have 18–19 points/m² and about 0.9 million third-or-"
+                 "later returns per km², the LAS 1.4 tiles 46–50 points/m² and 20–23 million. Even kp’s default draws "
+                 "0.6 % green on the LAS 1.2 side against 55 % on the LAS 1.4 side. Across the blocks, the fewer multiple "
+                 "returns the LAS 1.2 tiles have, the larger the step that is left (correlation −0.32; three of the four "
+                 "blocks with the fewest are among the eight worst). Closing such seams would need a third set for LAS 1.2 "
+                 "forest with few multiple returns, chosen per tile from the header survey.</p></div>")
+    figs([p for p in shots if p.stem.startswith("wuerzburg")])
+    return h
+
+
+SHOT_CAPTIONS: dict[str, str] = {
+    "wuerzburg_round2_vs_matched": "North of Würzburg (Gramschatzer Wald), the LAS 1.4 tiles above the dashed line. Left: "
+                                   "round 2 (las14-balanced + las12-balanced); right: las14-balanced + las12-match-balanced.",
+    "wuerzburg_default_vs_r1matched": "The same view. Left: kp default on both; right: las14-r1 + las12-match-r1.",
+    "allgaeu_round2_vs_matched": "Oberallgäu south of Sonthofen, LAS 1.4 above the dashed line. Left: round 2 "
+                                 "(las14-balanced + las12-balanced); right: las14-balanced + las12-match-balanced.",
+    "allgaeu_default_vs_matched_north": "Oberallgäu near Immenstadt, LAS 1.2 west of the dashed line. Left: kp default on "
+                                        "both; right: las14-balanced + las12-match-balanced.",
+}
 
 
 def page(body: str, mode: str) -> str:

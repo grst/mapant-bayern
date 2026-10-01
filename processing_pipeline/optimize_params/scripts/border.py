@@ -44,7 +44,12 @@ OUT = ROOT / "results/border.csv"
 MUST = [(567, 5528, "v")]
 
 
-def select(n_spread: int = 20, min_score: float = 0.64, min_km: float = 25) -> None:
+# The Allgäu area rendered for the final visual comparison stays out of the blocks (test area).
+EXCLUDE = (585, 5265, 608, 5292)
+
+
+def select(n_spread: int = 20, min_score: float = 0.64, min_km: float = 25, extend: bool = False) -> None:
+    """Pick blocks. extend=True keeps border.yaml's blocks and adds more (round 3: 50 in all)."""
     d = pd.read_parquet(ROOT / "results/density.parquet")
     d["x"], d["y"] = d.min_x // 1000, d.min_y // 1000
     d["ret"] = (d.n_second + d.n_third_plus) / d.n_first
@@ -68,14 +73,20 @@ def select(n_spread: int = 20, min_score: float = 0.64, min_km: float = 25) -> N
             if r:
                 cands.append((r[2], x, y, o))
     cands.sort(reverse=True)
-    chosen = list(MUST)
+    old = blocks() if extend else {}
+    chosen = [(int(k[1:].split("_")[0]), int(k.split("_")[1][:-1]), k[-1]) for k in old] or list(MUST)
+    ex0, ey0, ex1, ey1 = EXCLUDE
     for sc, x, y, o in cands:
         if sc < min_score or len(chosen) > n_spread:
             break
+        if ex0 - 2 <= x <= ex1 + 1 and ey0 - 2 <= y <= ey1 + 1:
+            continue
         if all(np.hypot(x - cx, y - cy) > min_km for cx, cy, _ in chosen):
             chosen.append((x, y, o))
-    out = {}
+    out = dict(old)
     for x, y, o in chosen:
+        if f"b{x}_{y}{o}" in out:
+            continue
         a, b, sc = block(x, y, o)
         lv = {f"{t[0]}_{t[1]}": float(v[t]) for t in a + b}
         side12, side14 = (a, b) if float(v[a[0]]) == 1.2 else (b, a)
@@ -199,6 +210,8 @@ def main() -> int:
     cmd = sys.argv[1]
     if cmd == "select":
         select()
+    elif cmd == "extend":
+        select(n_spread=int(sys.argv[2]), min_score=float(sys.argv[3]), min_km=float(sys.argv[4]), extend=True)
     elif cmd == "prepare":
         prepare()
     elif cmd == "eval":

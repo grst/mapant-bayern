@@ -36,6 +36,10 @@ This file documents the method and how to re-run it.
 | `scripts/report.py` | the report: `offline` → `report/index.html` + `report/gallery.html`; `artifact` → one self-contained page |
 | `scripts/samplesheet_ini.py` | adds `las_version` and `pullauta_ini` to `../input/laz_tiles.csv` |
 | `scripts/prune_runs.py` | deletes cached stage runs of search trials (disk) |
+| `scripts/match12.py` | round 3: LAS 1.2 sets matched to the LAS 1.4 sets across the border (forest strips) → `results/match12.csv` |
+| `scripts/region.py` | renders whole areas with every set (one batch run per tile + per-set stage runs, cropped/reprojected as kp's batch mode) and cuts them into PMTiles |
+| `scripts/compare.py`, `scripts/compare.html`, `scripts/compare_serve.py`, `scripts/compare_shot.mjs` | the comparison viewer → `work/compare/` |
+| `kp-hardlink.patch` | kp patch used for the study binary: hard-link the cached point cloud into a run's temp folder instead of copying it (IO only, output identical) |
 | `params/` | the recommended ini files |
 
 Bulk data (laz, point-cloud caches, run outputs, reference tiles) lives in `work/`, which is not
@@ -134,7 +138,38 @@ scripts/run_round2.sh; scripts/run_round2_studies.sh   # round 2: new sites, bor
 .venv/bin/python scripts/write_inis.py las14-balanced las12-balanced ...   # then rename to params/pullauta.bayern-las1x.ini
 .venv/bin/python scripts/gallery.py && .venv/bin/python scripts/report.py offline
 .venv/bin/python scripts/samplesheet_ini.py
+scripts/run_round3_chain.sh                      # round 3: matched LAS 1.2 sets, area renders, viewer
+scripts/run_region_finish.sh                     # redo unfinished tiles, vector tiles, viewer
 ```
+
+The comparison viewer needs HTTP range requests: `python3 work/compare/serve.py`, then open
+<http://localhost:8765/>. `work/compare/` is self-contained (vendored MapLibre and PMTiles) and can be
+copied elsewhere.
+
+## Round 3 (2026-10-01): LAS 1.2 matched to LAS 1.4
+
+LAS 1.4 has the better reference support, so each LAS 1.4 set (`las14-r1`, `las14-balanced`,
+`las14-clean`) was taken as given, and a LAS 1.2 set was searched that makes the LAS 1.2 side of a
+generation border look like the LAS 1.4 side (`scripts/match12.py`):
+
+* 52 border blocks (31 new; the Allgäu viewer area left out), 35 for the search, 17 held out.
+* Only OSM forest counts, in 300 m strips on each side of the border. The LAS 1.2 strip is rendered
+  from a cropped point cloud (both tiles + 127 m buffer; 96–99 % pixel agreement with whole tiles).
+* Mismatch: earth mover's distance over white < 406 < 408 < 410 of the mean share difference, + the
+  open-land difference, + 0.2 |mean log ratio of class-boundary density| (patchiness), + 0.3 × the
+  same per block. One TPE study per LAS 1.4 set, 50 trials each, every render scored for all three.
+
+Result (holdout mismatch, matched vs. the round-2 sibling): r1 0.198 vs 0.254, balanced 0.229 vs
+0.316, clean 0.203 vs 0.388, balanced-sub3 0.228 vs 0.354. Most of the gain is patchiness: the LAS 1.4
+strips had about 1.35× the patch edges of the LAS 1.2 strips, the matched sets bring that to ~1.
+The price on the five LAS 1.2 reference maps: mean green kappa 0.41 (`las12-balanced`) → 0.40
+(`match-r1`), 0.39 (`match-balanced`), 0.36 (`match-clean`); the matched sets draw more green than
+those maps. Where the LAS 1.2 tiles have few multiple returns (north of Würzburg: 0.9 M vs 20–23 M
+third-or-later returns per km²) no LAS 1.2 set closes the seam.
+
+New inis: `params/pullauta.bayern-las12-match-{r1,balanced,clean,balanced-sub3}.ini`, plus
+`pullauta.bayern-las14-r1.ini` and `-las14-balanced-sub3.ini` so that every pair is in `params/`.
+The samplesheet column is unchanged (round-2 pair) until a pair is chosen.
 
 ## Results (round 2, 2026-09-29)
 
