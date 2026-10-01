@@ -95,22 +95,31 @@ export function symbolFor(
   properties: Record<string, string | number | boolean>,
 ): Symbolisation | null {
   const isom = String(properties.isom ?? '');
-  switch (layer) {
-    case 'contours':
-    case 'formlines':
-    case 'dotknolls':
-    case 'cliffs':
-    case 'vegetation':
-    case 'yellow':
-    case 'undergrowth':
-      return CURVES[String(properties.layer)] ?? TERRAIN[isom] ?? null;
-
-    case 'osm_areas':
-    case 'osm_lines':
-      // The T suffix marks karttapullautin's bridge/tunnel variant of a symbol, same feature.
-      return OSM_CODES[isom.replace(/T$/, '')] ?? null;
-
-    default:
-      return null;
+  if (TERRAIN_LAYERS.includes(layer)) {
+    return CURVES[String(properties.layer)] ?? TERRAIN[isom] ?? null;
   }
+  if (OSM_LAYERS.includes(layer)) {
+    // The T suffix marks karttapullautin's bridge/tunnel variant of a symbol, same feature.
+    return OSM_CODES[isom.replace(/T$/, '')] ?? null;
+  }
+  return null;
+}
+
+/** The tile layers karttapullautin's terrain comes in; their `isom` is already ISOM 2017-2. */
+const TERRAIN_LAYERS = ['contours', 'formlines', 'dotknolls', 'cliffs', 'vegetation', 'yellow', 'undergrowth'];
+
+/** The tile layers the OpenStreetMap shapes come in, numbered in ISOM 2000. */
+const OSM_LAYERS = ['osm_areas', 'osm_lines'];
+
+export const TILE_LAYERS = [...TERRAIN_LAYERS, ...OSM_LAYERS];
+
+/** Every `isom` value a tile layer can carry that has a symbol, for lookups built ahead of time. */
+export function knownIsomValues(layer: string): string[] {
+  if (TERRAIN_LAYERS.includes(layer)) {
+    return Object.keys(TERRAIN);
+  }
+  if (OSM_LAYERS.includes(layer)) {
+    return Object.keys(OSM_CODES).flatMap((code) => [code, `${code}T`]);
+  }
+  return [];
 }

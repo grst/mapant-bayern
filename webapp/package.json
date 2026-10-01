@@ -13,14 +13,13 @@
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
+    "@metsa/isom-maplibre": "^0.1.0",
     "@types/proj4": "^2.5.6",
     "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
+    "maplibre-gl": "^6.11.2",
     "marked": "^18.0.9",
-    "ol": "^10.10.0",
-    "ol-mapbox-style": "^13.5.1",
     "pbf": "^5.1.2",
-    "pmtiles": "^4.4.1",
     "proj4": "^2.22.0"
   },
   "devDependencies": {

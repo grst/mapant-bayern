@@ -1,19 +1,17 @@
-import type Map from 'ol/Map';
+import type {Map} from 'maplibre-gl';
 
 /**
  * "Zoom in to view the orienteering map" – shown while the view sits below the
- * lowest zoom level the archive covers.
+ * lowest zoom level the vector pyramid covers.
  */
 export function initZoomHint(map: Map, minZoom: number): void {
   const hint = document.getElementById('zoom-hint');
   if (!hint) {
     return;
   }
-  const view = map.getView();
   const update = () => {
-    const zoom = view.getZoom();
-    hint.hidden = zoom !== undefined && zoom >= minZoom;
+    hint.hidden = map.getZoom() >= minZoom;
   };
-  view.on('change:resolution', update);
+  map.on('zoom', update);
   update();
 }

@@ -14,7 +14,7 @@ async function stubTiles(page: Page, terrainZooms?: number[]): Promise<void> {
     }
     return route.fulfill({status: 200, contentType: 'image/png', body: png});
   });
-  await page.route(/mapant-tiles\.orienteering-allgaeu\.de/, (route) => route.abort());
+  await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
 }
 
 /** Loads the map with the given layers and opens the print panel. */
@@ -52,19 +52,18 @@ test('exports an A4 PDF of the centred area at print density', async ({page}, te
 
   // A4 portrait in PDF points (210 x 297 mm).
   expect(pdf).toMatch(/\/MediaBox\s*\[0 0 595\.\d+ 841\.\d+\]/);
-  // 210 mm x 290 mm of map at 600 dpi, losslessly compressed. One image pixel per
-  // pixel of paper: at 1:10 000 that is 0.42 m of ground, which the z18 tiles fill.
+  // 210 mm x 290 mm of map at 600 dpi, losslessly compressed: one image pixel per
+  // pixel of paper.
   expect(pdf).toMatch(/\/Width 4961\b/);
   expect(pdf).toMatch(/\/Height 6850\b/);
   expect(pdf).toContain('/Filter /FlateDecode');
 });
 
 /**
- * The print map renders one canvas pixel per pixel of paper, which is what makes
- * OpenLayers pick a tile zoom level for the print rather than for the screen. The
- * terrain layer is the one whose tiles are plain URLs, so it is where that choice
- * can be observed: a 1:10 000 page asks for 0.64 m per pixel, so the DEM is read
- * at its finest level (z16) instead of the z14 a 96 dpi view would settle for.
+ * MapLibre picks tile levels from the zoom alone, and the print map sits at the
+ * zoom of its scale, so the print style declares the terrain tiles smaller than
+ * they are to get the finest ones: at 1:10 000 the DEM is read at z16 instead of
+ * the z14 a 96 dpi view would settle for.
  */
 test('fetches tiles at the density of the paper, not of the screen', async ({page}) => {
   const zooms: number[] = [];
@@ -82,4 +81,26 @@ test('fetches tiles at the density of the paper, not of the screen', async ({pag
   // this test is about – has been decided by now.
   await expect.poll(() => zooms.length, {timeout: 60_000}).toBeGreaterThan(12);
   expect([...new Set(zooms)]).toEqual([16]);
+});
+
+/**
+ * The same for the orienteering map: whatever the scale, a page is drawn from the
+ * pyramid's deepest level, the only one that carries form lines and knolls. The
+ * live map at this zoom reads z14.
+ */
+test('draws the orienteering map from the deepest tiles', async ({page}) => {
+  await stubTiles(page);
+  const levels: number[] = [];
+  await page.route(/r2\.dev\/vtiles\/\d+\//, (route) => {
+    levels.push(Number(/vtiles\/(\d+)\//.exec(route.request().url())![1]));
+    return route.fulfill({status: 404, body: ''});
+  });
+  await openPrintPanel(page, 'l');
+
+  await page.waitForTimeout(500);
+  levels.length = 0;
+  await page.locator('.print-export').click();
+
+  await expect.poll(() => levels.length, {timeout: 60_000}).toBeGreaterThan(12);
+  expect([...new Set(levels)]).toEqual([16]);
 });

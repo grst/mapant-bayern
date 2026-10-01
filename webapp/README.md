@@ -1,7 +1,7 @@
 # Mapant Bayern webapp
 
 The map viewer at [mapant.orienteering-allgaeu.de](https://mapant.orienteering-allgaeu.de): a static
-site built with [Vite](https://vite.dev/) and [OpenLayers](https://openlayers.org/), deployed to
+site built with [Vite](https://vite.dev/) and [MapLibre GL JS](https://maplibre.org/), deployed to
 GitHub Pages by `.github/workflows/webapp.yml` on every push to `main`.
 
 ## Development
@@ -22,14 +22,18 @@ The first test run needs the browser: `npx playwright install --with-deps chromi
 | Path | What it is |
 | --- | --- |
 | `index.html`, `about.html` | the two pages; no client-side routing |
-| `src/layers.ts` | all map layers and their copyright notices |
-| `src/map.ts` | map, view and OpenLayers controls |
+| `src/layers.ts` | the map's style (sources and layers) and the copyright notices |
+| `src/isomstyle.ts` | the ISOM style of isom-maplibre, bridged onto mapant-nf's tiles |
+| `src/tilemerge.ts` | serves the pyramid to MapLibre one level deeper than it would read it |
+| `src/map.ts` | map, controls and the switchable layers |
+| `src/geo.ts` | web mercator and the sphere maths for measuring |
 | `src/urlstate.ts` | the share link: `#map=zoom/lat/lon&layers=…&lang=…&d=…` |
 | `src/draw.ts`, `src/drawings.ts` | measure/draw interactions, and the codec that puts them in the URL |
 | `src/print.ts` | PDF export: scale maths and the off-screen print map |
 | `src/i18n.ts`, `src/i18n/*.ts` | DE/EN strings, applied via `data-i18n` attributes |
 | `src/ui/*.ts` | navbar, layer panel, print panel, draw toolbar, share button, zoom hint |
 | `public/places.geojson` | town names overlay (generated, committed) |
+| `public/fonts/` | glyphs for the town names and measurements (Noto Sans, OFL) |
 | `public/CNAME` | custom domain, copied into `dist/` by Vite |
 
 The about page renders the repository's root `README.md` – or `README.de.md` when German is selected –
@@ -42,47 +46,53 @@ plugin in `vite.config.ts`.
 [jsPDF](https://github.com/parallax/jsPDF) (loaded on demand – it is larger than the rest of the app).
 
 * A4, portrait or landscape, at 1:4000 / 1:7500 / 1:10 000 / 1:15 000.
-* 600 dpi, losslessly compressed. That is roughly where the archive runs out of detail: at 1:10 000 the
-  page asks for 0.42 m per pixel and the z18 tiles hold about 0.4 m.
-* The print map renders at `pixelRatio = 1` into a viewport the size of the paper *in output pixels* –
-  4961 × 6850 for an A4 page. This is what makes the print sharp, and it is easy to get wrong:
-  OpenLayers picks the tile zoom level from the view resolution alone and then scales the tiles up by
-  the pixel ratio, so a map at `pixelRatio = dpi/96` fetches the tiles a *screen* would use and
-  magnifies them – 600 dpi of paper carrying 96 dpi of map. The price is that style sizes given in CSS
-  pixels no longer scale by themselves, so the layers are handed a `styleScale` to multiply fonts,
-  stroke widths and symbol radii by (`PrintLayerOptions` in `src/print.ts`).
+* 600 dpi, losslessly compressed. The map is drawn from vector tiles, so the density is limited by
+  the canvas, not by the data.
+* The print map is laid out at the paper's size in CSS pixels, at the zoom of the requested scale,
+  and drawn at `pixelRatio = dpi / 96` – a 4961 × 6850 canvas for an A4 page at 600 dpi. Vector
+  tiles are drawn anew at that density rather than magnified, and every size the styles give in CSS
+  pixels comes out on paper at its size on screen.
+* What the pixel ratio does not change is which tiles MapLibre reads: it picks them from the zoom
+  alone, which would give a page the tiles a screen at that scale gets. The print style therefore
+  reads the orienteering map from the pyramid's deepest level at any scale (`mapant-print-tiles` in
+  `src/layers.ts`), and declares the terrain tiles smaller than they are to get the finest ones.
 * Safari caps a canvas at about 16.7 million pixels, well under an A4 page at 600 dpi, and silently
-  ignores drawing beyond it. The export probes a canvas of the size it needs and steps down to 400 or
-  300 dpi if the browser will not hand one out.
+  ignores drawing beyond it; WebGL has a limit of its own on the drawing buffer. The export probes
+  both and steps down to 400 or 300 dpi if the browser will not hand out what it needs.
 * The scale is exact: the view resolution is derived from the paper size and corrected for the local
   Web Mercator distortion, so a ruler on the print agrees with the stated scale.
 * A footer strip carries the scale and the copyright notices of the layers that were printed.
 
-A full page is 300 to 650 tiles, around 20 MB from the archive, and lands at 25–45 MB of PDF. Expect
-some seconds on a fast connection and a couple of minutes on a slow one; the tile cache of the print
-layers is sized for the page, since the 512 tiles OpenLayers keeps by default are not enough to hold
-one.
+MapLibre reports a map finished (`idle`) only after a frame, and a last request that fails does not
+ask for one; the export gives the print map another frame while it waits, or it could wait forever.
 
-## Vector map
+## The orienteering map
 
-Built with `VITE_MAPANT_STYLE` set to the `style.json` that mapant-nf publishes next to a vector
-pyramid, the app draws the orienteering map from those tiles instead of the WebP archive, with the
-pipeline's own MapLibre style applied by `ol-mapbox-style`. Everything else -- print, OCAD export,
-places, hill shading -- stays as it is.
+The map is drawn from the vector pyramid that mapant-nf publishes as `tiles_vector/`
+(`--vector_tiles true`), served as static files from an R2 bucket (`MAPANT_TILES_URL` in
+`src/layers.ts`), in the ISOM 2017-2 style of [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
 
-* The style's background is not used: OpenLayers would paint it across the whole viewport. White
-  paper is drawn only where the pyramid has tiles, from a `coverage.geojson` next to the style;
-  `node scripts/vector-coverage.mjs <tiles_vector dir>` writes it.
-* The tiles are read as 256 px tiles, like the raster pyramid: zoom z shows tile level z, so all
-  contours are on screen from z15 and the full detail from z16. MapLibre, which takes them as
-  512 px, shows each level one zoom later. Line widths are unaffected; they follow the style's zoom.
-* Print needs nothing extra. The style sizes its lines in ground metres, so the finer resolution of
-  the print map already draws them at the right width on paper.
-
-```sh
-VITE_MAPANT_STYLE=/vtiles/style.json VITE_MAPANT_VECTOR_TILES='/vtiles/{z}/{x}/{y}.pbf' \
-VITE_MAPANT_VECTOR_MIN_ZOOM=12 VITE_MAPANT_VECTOR_MAX_ZOOM=16 npm run build
-```
+* **The style does not fit the tiles as they are.** isom-maplibre expects one source per table
+  (`contours`, `vegetation_areas`, `paths`, …) with an `isom_code` such as `"403.000"`; the pyramid is
+  one source whose layers are karttapullautin's outputs, with karttapullautin's `isom` – ISOM 2017-2
+  for the terrain, ISOM 2000 for the OpenStreetMap shapes. `src/isomstyle.ts` repeats each of the
+  style's layers for every tile layer that can hold its symbol, with a lookup from `isom` to the style's
+  code. The translation is the OCAD export's, so the two agree. `HANDOFF-isom-maplibre.md` in the
+  repository root lists what mapant-nf would change so this goes away.
+* **The pyramid is cut for 256 px tiles; MapLibre only takes 512.** Read as they are, every level would
+  show one zoom later than it is generalised for – form lines and knolls only at about 1:3000. So
+  `src/tilemerge.ts` answers each tile MapLibre asks for with the pyramid's four tiles one level deeper,
+  merged by rewriting the protobuf (tag tables joined, geometry offset into its quadrant). All zooms in
+  the code are MapLibre's; the share link keeps the 256 px convention OpenStreetMap uses, one higher.
+* Fills draw polygons only and lines draw lines only: MapLibre would otherwise fill an open line, and
+  trace the edges the merged children were cut at.
+* The style's background is not used, and white paper is drawn only where the pyramid has tiles, from
+  a `coverage.geojson` next to them; `node scripts/vector-coverage.mjs <tiles_vector dir>` writes it,
+  and it is uploaded with the tiles. The tile bounds come from the pyramid's `metadata.json`.
+* The style's pattern and symbol images are rasterised from isom-maplibre's SVGs as MapLibre asks for
+  them, at the screen's or the print's pixel ratio.
+* The bucket has to send CORS headers for any origin that serves the app other than the bucket
+  itself (the GitHub Pages domain, `localhost` during development).
 
 ## OCAD export
 
@@ -91,9 +101,8 @@ is going to survey the area. `src/ocd/` does the whole conversion in the browser
 backend and no WebAssembly, because an A4 page is a few dozen vector tiles and a few megabytes of
 `DataView` writes.
 
-* The data comes from a **vector** pyramid (`tiles_vector/` from `mapant-nf --vector_tiles true`),
-  not from the WebP archive, since an image cannot be turned back into objects. `src/ocd/config.ts`
-  holds its URL and zoom range; both are `VITE_`-prefixed build settings.
+* The data comes from the same vector pyramid the map is drawn from (`MAPANT_TILES_URL` in
+  `src/layers.ts`), read directly rather than through the tile merging above. `src/ocd/config.ts` holds the template URL and the target coordinate system.
 * It always reads the **deepest** zoom, the only level that carries the map as karttapullautin
   rendered it. Every level above it is deliberately generalised for the screen -- form lines and
   knolls left off, the vegetation traced from a coarser grid, the cliff hatching sampled -- which is
@@ -139,12 +148,14 @@ round trip.
 
 ## Data sources
 
+Zoom levels as in the share link (256 px tiles, OpenStreetMap's convention).
+
 | Layer | Source | Zoom levels |
 | --- | --- | --- |
 | Background | OpenStreetMap standard tiles | below 12 only – nothing is fetched once the orienteering map takes over |
-| Orienteering map | `mapant-bayern.pmtiles` over HTTP range requests | 12–18 |
-| Hill shading | Mapterhorn terrarium DEM, shaded in WebGL, multiplied over the map | 0–16 (overzoomed above, with the slope held at its z16 value) |
-| Town names | OpenStreetMap via Overpass | cities 7+, towns 10+, villages 13+ |
+| Orienteering map | mapant-nf vector tiles (`{z}/{x}/{y}.pbf`) on R2, in isom-maplibre's ISOM 2017-2 style | 12–16 (overzoomed to 18) |
+| Hill shading | Mapterhorn terrarium DEM, MapLibre's hillshade layer (shadows only) | 0–16 (overzoomed above) |
+| Town names | OpenStreetMap via Overpass | cities and towns 12+, villages 13+ |
 
 ## Refreshing the town names
 

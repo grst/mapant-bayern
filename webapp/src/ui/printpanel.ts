@@ -1,4 +1,3 @@
-import Control from 'ol/control/Control';
 import {formatNumber, onLangChange, t} from '../i18n';
 import {printGroundSize, SCALES, type Orientation} from '../print';
 import {controlButton, element, i18nText} from './dom';
@@ -22,10 +21,10 @@ const ORIENTATIONS: {value: Orientation; labelKey: 'print.portrait' | 'print.lan
 ];
 
 /** Scale and paper format for the PDF export, plus the export button itself. */
-export function createPrintPanel(options: PrintPanelOptions, target: HTMLElement): Control {
+export function createPrintPanel(options: PrintPanelOptions): HTMLElement {
   const settings: PrintSettings = {scale: 10000, orientation: 'portrait'};
 
-  const container = element('div', 'ol-control print-panel');
+  const container = element('div', 'maplibregl-ctrl maplibregl-ctrl-group print-panel');
   const button = controlButton('print', 'print.toggle');
   const panel = element('div', 'print-panel-body');
   panel.hidden = true;
@@ -141,5 +140,5 @@ export function createPrintPanel(options: PrintPanelOptions, target: HTMLElement
   setOpen(false);
 
   container.append(button, panel);
-  return new Control({element: container, target});
+  return container;
 }

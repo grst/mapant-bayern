@@ -1,74 +1,129 @@
-import Map from 'ol/Map';
-import View from 'ol/View';
-import Attribution from 'ol/control/Attribution';
-import Control from 'ol/control/Control';
-import FullScreen from 'ol/control/FullScreen';
-import ScaleLine from 'ol/control/ScaleLine';
-import Zoom from 'ol/control/Zoom';
-import {defaults as defaultInteractions} from 'ol/interaction/defaults';
-import {fromLonLat} from 'ol/proj';
+import {FullscreenControl, Map, NavigationControl, ScaleControl, setWorkerUrl} from 'maplibre-gl';
+import type {IControl} from 'maplibre-gl';
+// MapLibre parses tiles in web workers, whose script it loads from next to its own module -- which
+// a bundle does not have. Vite builds the worker with its dependencies and hands over the URL.
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import {t} from './i18n';
 import type {Key} from './i18n/en';
-import {createLayers, MAPANT_MAX_ZOOM, type AppLayers} from './layers';
+import {provideIsomIcons, rasterizeIsomIcons} from './isomstyle';
+import {
+  attributions,
+  createStyle,
+  MAP_MAX_ZOOM,
+  OPTIONAL_STYLE_LAYERS,
+  type OptionalLayer,
+  type Visibility,
+} from './layers';
+
+setWorkerUrl(workerUrl);
 
 export interface MapContext {
   map: Map;
-  layers: AppLayers;
-  /** Top-right column that the layer and share controls render into. */
-  controlStack: HTMLElement;
+  isVisible(layer: OptionalLayer): boolean;
+  setVisible(layer: OptionalLayer, visible: boolean): void;
+  visibility(): Visibility;
+  onVisibilityChange(listener: () => void): void;
 }
 
-/** Marks an OpenLayers-generated button so a language switch re-labels it. */
+/** Marks a MapLibre-generated button so a language switch re-labels it. */
 function tagTooltip(element: Element | null, key: Key): void {
   if (element instanceof HTMLElement) {
     element.dataset.i18nTitle = key;
+    element.dataset.i18nLabel = key;
     element.title = t(key);
+    element.setAttribute('aria-label', t(key));
   }
 }
 
-export function createMap(target: string, view: {zoom: number; lat: number; lon: number}): MapContext {
-  const layers = createLayers();
+/** Wraps an element of the app's own as a MapLibre control. */
+export function domControl(element: HTMLElement): IControl {
+  return {
+    onAdd: () => element,
+    onRemove: () => element.remove(),
+  };
+}
 
-  const controlStack = document.createElement('div');
-  controlStack.className = 'ol-control map-control-stack';
-
-  const controls = [
-    new Zoom({zoomInTipLabel: t('ol.zoomIn'), zoomOutTipLabel: t('ol.zoomOut')}),
-    new Control({element: controlStack}),
-    new FullScreen({tipLabel: t('ol.fullscreen'), target: controlStack}),
-    new ScaleLine({minWidth: 80}),
-  ];
-
-  // Per-layer copyright notices: OpenLayers only lists the layers that are
-  // actually being rendered, and the control writes them into the page footer.
-  const attributionTarget = document.getElementById('attribution');
-  if (attributionTarget) {
-    controls.push(new Attribution({target: attributionTarget, collapsible: false}));
-  }
+export function createMap(
+  target: string,
+  view: {zoom: number; lat: number; lon: number},
+  initiallyVisible: Visibility,
+): MapContext {
+  const visible: Visibility = {...initiallyVisible};
 
   const map = new Map({
-    target,
-    layers: [layers.osm, layers.mapant, layers.hillshade, layers.places, layers.grid],
-    controls,
-    // The map container has a `tabindex` so it can be panned with the keyboard,
-    // and a Map built without explicit interactions then only drags and wheel
-    // zooms while that container has the focus. On a touch screen that costs a
-    // tap before the map reacts to a swipe at all, so the focus condition goes.
-    interactions: defaultInteractions({onFocusOnly: false}),
-    view: new View({
-      center: fromLonLat([view.lon, view.lat]),
-      zoom: view.zoom,
-      minZoom: 1,
-      maxZoom: MAPANT_MAX_ZOOM,
-      // An orienteering map is read north-up, and no rotation keeps share links simple.
-      enableRotation: false,
-    }),
+    container: target,
+    style: createStyle({visible}),
+    center: [view.lon, view.lat],
+    zoom: view.zoom,
+    minZoom: 0,
+    maxZoom: MAP_MAX_ZOOM,
+    // An orienteering map is read north-up, and no rotation keeps share links simple.
+    dragRotate: false,
+    pitchWithRotate: false,
+    touchPitch: false,
+    maxPitch: 0,
+    // The notices go into the page footer instead, see below.
+    attributionControl: false,
   });
+  // MapLibre's canvas is the map's tab stop and takes the arrow keys. The container stays
+  // focusable for the skip link, and hands the focus on.
+  map.getContainer().addEventListener('focus', () => map.getCanvas().focus());
+  map.touchZoomRotate.disableRotation();
+  map.keyboard.disableRotation();
+  map.showTileBoundaries = visible.grid;
+  provideIsomIcons(map, rasterizeIsomIcons(window.devicePixelRatio), window.devicePixelRatio);
 
-  const viewport = map.getViewport();
-  tagTooltip(viewport.querySelector('.ol-zoom-in'), 'ol.zoomIn');
-  tagTooltip(viewport.querySelector('.ol-zoom-out'), 'ol.zoomOut');
-  tagTooltip(viewport.querySelector('.ol-full-screen button'), 'ol.fullscreen');
+  map.addControl(new NavigationControl({showCompass: false}), 'top-left');
+  // The whole page area under the navbar, so the footer's notices stay out of the way.
+  map.addControl(new FullscreenControl(), 'top-right');
+  map.addControl(new ScaleControl({maxWidth: 120}), 'bottom-right');
 
-  return {map, layers, controlStack};
+  const container = map.getContainer();
+  tagTooltip(container.querySelector('.maplibregl-ctrl-zoom-in'), 'ol.zoomIn');
+  tagTooltip(container.querySelector('.maplibregl-ctrl-zoom-out'), 'ol.zoomOut');
+  tagTooltip(container.querySelector('.maplibregl-ctrl-fullscreen'), 'ol.fullscreen');
+
+  // Per-source copyright notices, written into the page footer: only those of what is on screen.
+  const attributionTarget = document.getElementById('attribution');
+  let shownAttribution = '';
+  const updateAttribution = () => {
+    const html = `<ul>${attributions(map.getZoom(), visible)
+      .map((notice) => `<li>${notice}</li>`)
+      .join('')}</ul>`;
+    if (attributionTarget && html !== shownAttribution) {
+      attributionTarget.innerHTML = html;
+      shownAttribution = html;
+    }
+  };
+  map.on('zoom', updateAttribution);
+  updateAttribution();
+
+  // Layout properties can only be set once the style is in; the initial visibility is part of
+  // the style itself, so only a change that comes earlier (a pasted link) has to wait.
+  let styleReady = false;
+  map.once('style.load', () => (styleReady = true));
+  const whenStyleReady = (apply: () => void) => (styleReady ? apply() : map.once('style.load', apply));
+
+  const listeners = new Set<() => void>();
+
+  return {
+    map,
+    isVisible: (layer) => visible[layer],
+    visibility: () => ({...visible}),
+    setVisible(layer, value) {
+      if (visible[layer] === value) {
+        return;
+      }
+      visible[layer] = value;
+      const styleLayer = OPTIONAL_STYLE_LAYERS[layer];
+      if (styleLayer) {
+        whenStyleReady(() => map.setLayoutProperty(styleLayer, 'visibility', visible[layer] ? 'visible' : 'none'));
+      } else if (layer === 'grid') {
+        map.showTileBoundaries = value;
+      }
+      updateAttribution();
+      listeners.forEach((listener) => listener());
+    },
+    onVisibilityChange: (listener) => listeners.add(listener),
+  };
 }

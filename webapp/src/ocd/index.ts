@@ -11,7 +11,6 @@
  * and wrong for a map you are going to survey from.
  */
 
-import type {Coordinate} from 'ol/coordinate';
 import type {Orientation} from '../print';
 import {printExtent} from '../print';
 import {clipLine, clipRing, contains, stitch} from './geometry';
@@ -24,7 +23,7 @@ import {decodeTile, tileRect, tilesCovering, type Rect, type XY} from './tiles';
 
 export interface OcdExportRequest {
   /** Centre of the print area, in EPSG:3857, as the map view has it. */
-  center: Coordinate;
+  center: XY;
   scale: number;
   orientation: Orientation;
   source: VectorSource;
@@ -68,7 +67,7 @@ export async function exportOcd(request: OcdExportRequest): Promise<OcdExportRes
   // Grouped by symbol and, for lines, kept as pieces to be stitched afterwards.
   const lines = new Map<string, {symbol: Symbolisation; pieces: XY[][]}>();
   const others: OcdObject[] = [];
-  const originProjected = toProjected(crs, center as XY);
+  const originProjected = toProjected(crs, center);
   const origin: XY = [Math.round(originProjected[0]), Math.round(originProjected[1])];
 
   const toPaper = (point: XY): [number, number] => {
@@ -196,5 +195,5 @@ function pointFromLine(
   };
 }
 
-export {xyzSource, pmtilesSource} from './source';
+export {xyzSource} from './source';
 export type {VectorSource} from './source';

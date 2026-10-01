@@ -1,11 +1,10 @@
-import Control from 'ol/control/Control';
 import type {DrawTools} from '../draw';
 import type {DrawingType} from '../drawings';
 import {controlButton, element, i18nText} from './dom';
 
 /** Measure/draw toolbar: line, polygon, undo, clear. */
-export function createDrawToolbar(tools: DrawTools): Control {
-  const container = element('div', 'ol-control draw-toolbar');
+export function createDrawToolbar(tools: DrawTools): HTMLElement {
+  const container = element('div', 'maplibregl-ctrl draw-toolbar');
 
   const modeButtons = new Map<DrawingType, HTMLButtonElement>([
     ['l', controlButton('line', 'draw.line')],
@@ -33,5 +32,5 @@ export function createDrawToolbar(tools: DrawTools): Control {
     hint.hidden = mode === null;
   });
 
-  return new Control({element: container});
+  return container;
 }

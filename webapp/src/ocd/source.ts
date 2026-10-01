@@ -1,12 +1,7 @@
 /**
- * Where the vector tiles come from.
- *
- * Two shapes of source, because the pipeline publishes a plain directory of tiles and the site
- * serves a single archive read over HTTP range requests. Both are static files; neither needs a
- * tile server, which is the point.
+ * Where the vector tiles come from: a plain directory of static tiles, as the pipeline publishes
+ * it. No tile server needed, which is the point.
  */
-
-import {PMTiles} from 'pmtiles';
 
 export interface VectorSource {
   minZoom: number;
@@ -34,24 +29,6 @@ export function xyzSource(template: string, minZoom: number, maxZoom: number): V
         throw new Error(`${url}: ${response.status} ${response.statusText}`);
       }
       return response.arrayBuffer();
-    },
-  };
-}
-
-/**
- * A PMTiles archive.
- *
- * The library decompresses a tile if the archive says it is compressed, so this works whether the
- * pyramid was packed with gzip or left plain.
- */
-export function pmtilesSource(url: string, minZoom: number, maxZoom: number): VectorSource {
-  const archive = new PMTiles(url);
-  return {
-    minZoom,
-    maxZoom,
-    async fetchTile(z, x, y) {
-      const tile = await archive.getZxy(z, x, y);
-      return tile?.data ?? null;
     },
   };
 }

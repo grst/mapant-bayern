@@ -6,8 +6,7 @@
  * therefore written in the projected system the LiDAR was flown in -- for Bavaria ETRS89 / UTM
  * zone 32N -- where a metre is a metre.
  *
- * proj4 rather than OpenLayers' own transforms: OpenLayers only knows EPSG:4326 and EPSG:3857
- * unless a projection database is registered, and this needs one more.
+ * proj4, since this needs a projection beyond web mercator and lon/lat.
  */
 
 import proj4 from 'proj4';

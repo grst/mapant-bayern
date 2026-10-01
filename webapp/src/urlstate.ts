@@ -5,14 +5,22 @@ import {detectLang, isLang, type Lang} from './i18n';
 export type LayerCode = 'h' | 'l' | 'g';
 export const LAYER_CODES: LayerCode[] = ['h', 'l', 'g'];
 
-/** Immenstadt im Allgäu, at the first zoom level the orienteering map covers. */
-export const DEFAULT_VIEW = {zoom: 12, lat: 47.5635, lon: 10.2142};
+/**
+ * The link counts zoom levels as OpenStreetMap does, in 256 px worlds -- one more than MapLibre's
+ * 512 px zoom for the same view. Links made before the switch to MapLibre keep working, and a link
+ * opens at the same place on openstreetmap.org.
+ */
+const LINK_ZOOM_OFFSET = 1;
+
+/** Immenstadt im Allgäu, at the first zoom level the orienteering map covers (map zoom). */
+export const DEFAULT_VIEW = {zoom: 11, lat: 47.5635, lon: 10.2142};
 const DEFAULT_LAYERS: LayerCode[] = ['l'];
 
 /** Browsers cope with far more, but a link this long is no longer shareable in practice. */
 const HASH_WARN_LENGTH = 8000;
 
 export interface AppState {
+  /** MapLibre's zoom. */
   zoom: number;
   lat: number;
   lon: number;
@@ -33,7 +41,7 @@ export function readState(): AppState {
   const [zoom, lat, lon] = (params.get('map') ?? '').split('/').map(Number);
   const view =
     Number.isFinite(zoom) && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 85
-      ? {zoom, lat, lon}
+      ? {zoom: zoom - LINK_ZOOM_OFFSET, lat, lon}
       : DEFAULT_VIEW;
 
   const layersParam = params.get('layers');
@@ -58,7 +66,7 @@ export function readState(): AppState {
  */
 export function writeState(state: AppState): void {
   const parts = [
-    `map=${round(state.zoom, 2)}/${round(state.lat, 5)}/${round(state.lon, 5)}`,
+    `map=${round(state.zoom + LINK_ZOOM_OFFSET, 2)}/${round(state.lat, 5)}/${round(state.lon, 5)}`,
     `layers=${LAYER_CODES.filter((code) => state.layers.has(code)).join(',')}`,
     `lang=${state.lang}`,
   ];

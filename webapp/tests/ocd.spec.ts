@@ -19,7 +19,7 @@ async function stubTiles(page: Page): Promise<void> {
   await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
-  await page.route(/mapant-tiles\.orienteering-allgaeu\.de/, (route) => route.abort());
+  await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
 
   // The vector pyramid is not part of the built site, so it is served from the fixtures. A tile
   // the fixture does not have answers 404, exactly as the real sparse pyramid does outside its
