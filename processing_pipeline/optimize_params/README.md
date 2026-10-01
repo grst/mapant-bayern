@@ -146,6 +146,19 @@ The comparison viewer needs HTTP range requests: `python3 work/compare/serve.py`
 <http://localhost:8765/>. `work/compare/` is self-contained (vendored MapLibre and PMTiles) and can be
 copied elsewhere.
 
+## Production choice
+
+After a visual check in the comparison viewer: `params/pullauta.bayern-las14.ini` = `las14-balanced` and
+`params/pullauta.bayern-las12.ini` = `las12-match-balanced` (round 3), both **without** the tuned cliff
+keys, i.e. with karttapullautin's default cliff and dot-knoll settings. The tuning clearly helps for
+white/green/yellow; the reference maps are not good enough to support cliff or knoll tuning (few
+mapped rock features, knolls lost in 3 m/px photos). Undergrowth and contours were never changed. The
+samplesheet's `pullauta_ini` column points at these two files. In `work/sets.json` they are
+`prod-las14` and `prod-las12`.
+
+For other regions, `../kp_tuning/` packages the green/white/yellow part of this study as an agent
+skill with reusable scripts.
+
 ## Round 3 (2026-10-01): LAS 1.2 matched to LAS 1.4
 
 LAS 1.4 has the better reference support, so each LAS 1.4 set (`las14-r1`, `las14-balanced`,

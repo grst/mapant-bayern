@@ -445,33 +445,38 @@ def build(mode: str) -> Path:
     h.append("</div>")
 
     # recommendations
-    def rec_card(name, file, gen_label, tiles, sites_, s):
+    def rec_card(name, file, gen_label, tiles, sites_, s, note):
         k0, k1 = delta(s, sites_, "green_kappa")
         g0, g1 = delta(s, sites_, "green_bias")
-        c0, c1 = delta(s, [x for x in sites_ if x not in NO_CLIFFS], "cliff_recall")
+        f0, f1 = delta(s, sites_, "open_f1")
         return (f'<div class="rec"><p class="kicker">{esc(gen_label)}</p><h3>{esc(name)}</h3>'
-                f'<p class="file">params/{esc(file)}</p><p style="margin:10px 0 0;font-size:.95rem">For the {tiles}.</p>'
+                f'<p class="file">params/{esc(file)}</p><p style="margin:10px 0 0;font-size:.95rem">For the {tiles}. {note}</p>'
                 f'<dl><dt>green kappa</dt><dd>{k0:.2f} → {k1:.2f}</dd><dt>green amount vs. map</dt><dd>{g0:.2f}× → {g1:.2f}×</dd>'
-                f'<dt>cliff recall</dt><dd>{c0:.2f} → {c1:.2f}</dd></dl>'
+                f'<dt>open land F1</dt><dd>{f0:.2f} → {f1:.2f}</dd></dl>'
                 f'<p class="muted" style="font-size:.8rem;margin:8px 0 0">means over {", ".join(SITE_LABEL[x] for x in sites_)}</p></div>')
 
     n14 = (pd.read_parquet(ROOT / "results/density.parquet").las_version == "1.4").sum()
+    prod = "prod-las14" in have
     h.append('<div class="recs">')
-    h.append(rec_card("las14", "pullauta.bayern-las14.ini", "recommended · LAS 1.4 tiles",
+    h.append(rec_card("las14", "pullauta.bayern-las14.ini", "production · LAS 1.4 tiles",
                       f"{n14:,} tiles delivered as LAS 1.4 / point format 6 (processed 2023 and later)",
-                      g_tr14 + g_ho14, "las14-balanced"))
-    h.append(rec_card("las12", "pullauta.bayern-las12.ini", "recommended · LAS 1.2 tiles",
+                      g_tr14 + g_ho14, "prod-las14" if prod else "las14-balanced",
+                      "Round 2’s balanced vegetation and open land."))
+    h.append(rec_card("las12", "pullauta.bayern-las12.ini", "production · LAS 1.2 tiles",
                       f"{71979 - n14:,} tiles delivered as LAS 1.2 / point format 1 (processed 2015–2022)",
-                      tr12 + ho12, "las12-balanced"))
+                      tr12 + ho12, "prod-las12" if prod else "las12-match-balanced",
+                      "Round 3’s set matched to the LAS 1.4 one across the generation border."))
     h.append("</div>")
-    h.append('<div class="col"><p>The pipeline samplesheet <code>input/laz_tiles.csv</code> now carries '
-             '<code>las_version</code> and <code>pullauta_ini</code> for every tile, written by '
-             '<code>scripts/samplesheet_ini.py</code> from the header survey. mapant-nf still renders one ini per run; '
-             'using the column is the next step there.</p><p>Alternatives from the same Pareto fronts, all in '
-             '<code>params/</code>: <code>las14-clean</code> (a little more green, smoother patches), '
-             '<code>las12-lessgreen</code> (about the maps’ green amount; best on the two LAS 1.2 holdout maps, weaker on '
-             'training), <code>las12-clean</code>, and <code>las12-detail</code> (most agreement on training but greener; it '
-             'matches the LAS 1.4 set best at the border).</p></div>')
+    h.append('<div class="col"><p><b>Production choice</b> (after a visual check in the comparison viewer): '
+             '<code>las14-balanced</code> for LAS 1.4 tiles and its matched LAS 1.2 set <code>las12-match-balanced</code>, '
+             'both with karttapullautin’s default cliff and dot-knoll settings. The tuning helps clearly for white, green '
+             'and yellow; for cliffs and knolls the reference maps are not good enough to support it (few mapped rock '
+             'features, knolls lost in 3 m/px photos), so those stay at the defaults, as do undergrowth and contours. '
+             'The other sets in <code>params/</code> are the alternatives the report compares.</p>'
+             '<p>The pipeline samplesheet <code>input/laz_tiles.csv</code> carries <code>las_version</code> and '
+             '<code>pullauta_ini</code> for every tile, written by <code>scripts/samplesheet_ini.py</code> from the '
+             'header survey; it points at these two files. mapant-nf still renders one ini per run; using the column is '
+             'the next step there.</p></div>')
 
     # round 2
     h.append("<h2>What changed since round 1</h2><div class='col'><ul>"

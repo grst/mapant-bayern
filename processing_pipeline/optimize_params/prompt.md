@@ -64,3 +64,27 @@ for different areas.
 You can iterate over night on this task. Run everything on this machine. You
 have approx. 300GB of disk space on a local nvme device and a 250Mbit internet
 connection to pull tiles.
+
+--------------------------------------------------------------------------------
+
+That looks already pretty good! Let's keep improving:
+
+- Keep iterating as long as the results improve
+- are there any more maps to consider? E.g. omaps.worldofo.com could be another
+  source
+- one goal is to optimize towards the real orienteering maps. Another one would
+  be to chose params such that LAS1.2 and LAS1.4 regions don't look too
+  different. In the first version of the map, there are some obvious borders
+  visible in the map, e.g. north of Würzburg:
+  https://mapant.orienteering-allgaeu.de/#map=12.23/49.92080/9.94445&layers=l&lang=en.
+  Don't overdo this though, alignment with the maps is more important and the
+  border issue should anyway improve as a side-effect of optimizing the maps.
+  But it could be another metric, and evaluate this in the report.
+- Show more comparisons between real and generated maps in the report (not just
+  one tile of a few examples). Can also be a separate folder with generated
+  images to not blow up the HTML too much.
+- Add the corresponding pullauta configs as an additional column in the tile csv
+  samplesheet used for the pipeline runs. We'll later adjust mapant-nf to handle
+  this, but it's beyond the current scope.
+- The report should also be available as HTML offline, not just as an artifact
+  on claude.ai.
