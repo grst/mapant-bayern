@@ -128,6 +128,8 @@ class Tiles:
             raise SystemExit(f"{csv}: expected one tile size, found {sizes}")
         self.size = float(sizes[0])
         self._grid = {(int(round(x)), int(round(y))): i for i, x, y in zip(df.id, df.min_x, df.min_y)}
+        self._bounds = {i: (float(a), float(b), float(c), float(d))
+                        for i, a, b, c, d in zip(df.id, df.min_x, df.min_y, df.max_x, df.max_y)}
 
     def __contains__(self, t: str) -> bool:
         return t in self.df.index
@@ -139,8 +141,7 @@ class Tiles:
         return list(self.df.index)
 
     def bounds(self, t: str) -> tuple[float, float, float, float]:
-        r = self.df.loc[t]
-        return float(r.min_x), float(r.min_y), float(r.max_x), float(r.max_y)
+        return self._bounds[t]
 
     def at(self, x: float, y: float) -> str | None:
         """The tile whose lower-left corner is (x, y)."""
