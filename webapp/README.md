@@ -75,6 +75,14 @@ The map is drawn from the PMTiles archive mapant-nf publishes (`map/mapant.pmtil
 range requests from an R2 bucket (`MAPANT_PMTILES_URL` in `src/archive.ts`), in the ISOM 2017-2 style
 of [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
 
+* **The style is a fork of isom-maplibre** (branch `fix/iof-colour-order` on top of upstream
+  `3c8ee09`), packed into `vendor/metsa-isom-maplibre-0.1.1-mapant.1.tgz` so the build needs nothing
+  outside this repository. It stacks the symbols in the IOF colour order for ISOM 2017-2 ("IOF Map
+  Specifications – Printing and Colour Definitions", 2022, §7), where upstream 0.1.0 did not: olive
+  (520) above the greens, streams above the contours, lake fill below wide roads and large buildings.
+  Contours stay above lakes, as in the standard; karttapullautin leaves them out under lakes instead
+  (`contour_mask`). To update it, rebuild the fork (`go generate ./... && npm run build && npm pack`)
+  and replace the tarball.
 * **The archive is in the style's schema**: a layer per table (`contours`, `vegetation_areas`,
   `paths`, …), each feature with its ISOM 2017-2 `isom_code` (`"403.000"`), 512 px tiles. The style's
   layers are used as they are; `src/isomstyle.ts` only points all of them at the one source, where the
