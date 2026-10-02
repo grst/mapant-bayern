@@ -117,7 +117,8 @@ def main() -> int:
         df["density"] = df.n_points / area  # points per m²
         df["pulse_density"] = df.n_first / area  # first returns per m² ~ pulses per m²
         df["returns_per_pulse"] = df.n_points / df.n_first.where(df.n_first > 0)
-        df["multi_share"] = (df.n_second + df.n_third_plus) / df.n_first.where(df.n_first > 0)
+        # share of pulses with >= 2 returns: each such pulse has exactly one second return
+        df["multi_share"] = df.n_second / df.n_first.where(df.n_first > 0)
         df.to_parquet(out_p)
         return df
 

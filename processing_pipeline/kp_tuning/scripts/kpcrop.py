@@ -147,6 +147,19 @@ def crop_geometry(g: dict, box) -> dict | None:
     return None
 
 
+def _ring_area(r) -> float:
+    return abs(sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(r, r[1:]))) / 2
+
+
+def _zero_area(g: dict) -> bool:
+    """A clipped polygon that collapsed onto the tile edge: draws nothing, and production has none."""
+    if g["type"] == "Polygon":
+        return _ring_area(g["coordinates"][0]) == 0
+    if g["type"] == "MultiPolygon":
+        return all(_ring_area(p[0]) == 0 for p in g["coordinates"])
+    return False
+
+
 class Cropper:
     """Crop to the tile and reproject to WGS84 (7 decimals), as kp's batch mode does."""
 
@@ -166,7 +179,7 @@ class Cropper:
         out = []
         for f in feats:
             g = crop_geometry(f["geometry"], box)
-            if g is None:
+            if g is None or _zero_area(g):
                 continue
             out.append({"type": "Feature", "properties": f.get("properties", {}),
                         "geometry": {"type": g["type"], "coordinates": self._wgs(g["coordinates"])}})

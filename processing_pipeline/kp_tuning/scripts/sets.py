@@ -6,6 +6,8 @@ From searches to parameter sets, their scores, ini files and the samplesheet col
     sets.py evaluate    --config region.yaml [set ...]      # all sets x all sites -> <results>/eval.csv
     sets.py inis        --config region.yaml set ...        # -> <results>/params/pullauta.<region>-<set>.ini
     sets.py samplesheet --config region.yaml --map G=set,G2=set2   # index + group + pullauta_ini columns
+    sets.py import-bavaria --config region.yaml   # bayern-las14 / bayern-las12 (mapant-bayern production) as priors
+    sets.py export --config region.yaml SET OUT.json   # a set's overrides without open-land keys (for --fixed)
 
 choose: on the green study's Pareto front (green_ba, green_kappa, readability), restricted to
 trials whose geometric-mean green amount across sites is within +-25 % of the maps (an arithmetic
@@ -97,13 +99,19 @@ def choose(group: str) -> None:
     df, names = trials(f"green-{group}")
     ok = lambda d: np.abs(np.log(d.green_bias_geo)) <= LOG125  # noqa: E731
     best = df[ok(df)].green_ba.max() if ok(df).any() else df.green_ba.max()
-    picks = {
-        "balanced": pick(df, names, [1, 1, 0.3], lambda d: ok(d) & (d.readability >= -0.35)),
-        "clean": pick(df, names, [0.3, 0.3, 1], lambda d: ok(d) & (d.green_ba >= best - 0.015)),
-        "lessgreen": pick(df, names, [1, 1, 0.3], lambda d: (np.abs(np.log(d.green_bias_geo)) <= math.log(1.08))
-                          & (d.readability >= -0.35)),
-        "detail": pick(df, names, [1, 1, 0]),
+    rules = {
+        "balanced": ([1, 1, 0.3], lambda d: ok(d) & (d.readability >= -0.35)),
+        "clean": ([0.3, 0.3, 1], lambda d: ok(d) & (d.green_ba >= best - 0.015)),
+        "lessgreen": ([1, 1, 0.3], lambda d: (np.abs(np.log(d.green_bias_geo)) <= math.log(1.08)) & (d.readability >= -0.35)),
+        "detail": ([1, 1, 0], None),
     }
+    picks = {}
+    for style, (w, cons) in rules.items():
+        try:
+            picks[style] = pick(df, names, w, cons)
+        except ValueError:
+            print(f"{group}-{style}: no trial meets its constraint (search too short, or the maps disagree on the "
+                  f"green amount); left out")
     yellow = {}
     try:
         ydf, _ = trials(f"yellow-{group}")
@@ -204,7 +212,7 @@ def samplesheet(mapping: dict[str, str]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["choose", "evaluate", "inis", "samplesheet"])
+    ap.add_argument("cmd", choices=["choose", "evaluate", "inis", "samplesheet", "import-bavaria", "export"])
     ap.add_argument("names", nargs="*")
     common.add_config_arg(ap)
     ap.add_argument("--group")
@@ -220,8 +228,19 @@ def main() -> int:
         sets = load_sets()
         for n in a.names:
             print(write_ini(n, sets[n]))
-    else:
+    elif a.cmd == "samplesheet":
         samplesheet(dict(kv.split("=") for kv in a.map.split(",")))
+    elif a.cmd == "import-bavaria":
+        prod = json.loads(optimize.SEEDS.read_text())["production"]
+        sets = load_sets()
+        for k, v in prod.items():
+            sets[f"bayern-{k}"] = v
+        save_sets(sets)
+        print("added", [f"bayern-{k}" for k in prod])
+    else:
+        o = {k: v for k, v in load_sets()[a.names[0]].items() if k not in optimize.YELLOW_KEYS}
+        Path(a.names[1]).write_text(json.dumps(o, indent=1))
+        print(f"{a.names[0]} (without open-land keys) -> {a.names[1]}")
     return 0
 
 

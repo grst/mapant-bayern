@@ -89,7 +89,8 @@ def batch(tile: str, d: Path, threads: int, ini_extra: dict | None = None, keep_
             (run / "out" / f"{t}.png").touch()
     ini = kp.base_ini()
     ini.update(OWNED)
-    ini.update(processes="1", savetempfolders="1" if keep_xyz else "0", **(ini_extra or {}))
+    ini.update({k: v for k, v in (ini_extra or {}).items() if k not in ("processes", "savetempfolders")})
+    ini.update(processes="1", savetempfolders="1" if keep_xyz else "0")
     kp.write_ini(run / "pullauta.ini", ini)
     with open(run / "pullauta.log", "w") as log:
         p = subprocess.run([str(common.kp_binary())], cwd=run, env=dict(os.environ, RAYON_NUM_THREADS=str(threads)),

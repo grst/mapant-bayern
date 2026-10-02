@@ -35,6 +35,7 @@ import kp  # noqa: E402
 import score  # noqa: E402
 
 SEEDS = common.KPT / "reference/bavaria_seeds.json"
+optuna.logging.set_verbosity(optuna.logging.WARNING)
 YELLOW_KEYS = ("yellowheight", "yellowthresold", "yellowfirstlast", "yellowmedianboxsize")
 
 
