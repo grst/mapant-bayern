@@ -1,0 +1,36 @@
+# A production-scale test region: the Oberallgäu Alps, from the Austrian border near Feldkirch
+# (47°14'37.4"N 9°40'02.6"E) up past Oberstdorf/Sonthofen/Immenstadt to Nesselwang
+# (47°43'13.1"N 10°26'59.8"E). ~53 x 59 km, given directly in lon/lat so no UTM conversion is
+# needed -- region_bbox_crs 'lonlat' is what PLAN_GRIDS reprojects internally.
+#
+# Unlike test_local/test_immenstadt this does not shrink grid_size, pullauta_processes or the zoom
+# range: it runs with the pipeline's production defaults, so it is meant to be run on
+# production-sized hardware rather than a laptop.
+#
+# The box straddles the Bavaria/Austria/Liechtenstein border. Of the ~3,100 1km tiles it covers, only
+# 1,629 are in Bavaria's tiles_csv; the rest are simply absent from the CSV and PLAN_GRIDS renders
+# only the covered side, no special handling needed. Those 1,629 core tiles are ~312 GiB; with the
+# ~1.44x halo amplification at the default grid_size (10) that's roughly 450 GiB actually fetched.
+
+tiles_csv: input/laz_tiles.csv 
+osm_pbf: input/bayern-latest.osm.pbf 
+
+region_bbox: '9.6673889,47.2437222,10.4499444,47.7203056'
+region_bbox_crs: lonlat
+
+download_jobs: 8
+download_limit_rate: '200M'
+
+base_zoom: 12
+max_zoom: 18
+
+grid_size: 16
+pullauta_processes: 16 
+
+osm_chunk_size: 4 
+
+map_title: 'mapant test -- Oberallgäu'
+outdir: /mnt/nvme/results/results_allgaeu
+publish_mode: link
+
+
