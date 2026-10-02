@@ -438,7 +438,7 @@ def build(mode: str) -> Path:
     h.append(f'<p class="lede">{lede}</p>')
     if mode == "artifact":
         h.append('<p class="muted">This page shows one comparison sheet per site. The offline copy '
-                 '(<code>processing_pipeline/optimize_params/report/</code>) has a sheet for every scored tile.</p>')
+                 '(<code>processing_pipeline/bayern/kp_param_tuning/report/</code>) has a sheet for every scored tile.</p>')
     else:
         h.append('<p class="muted">Offline copy. <a href="gallery.html">Gallery</a>: every scored tile of every site, '
                  'reference next to the parameter sets.</p>')
@@ -747,7 +747,7 @@ def build(mode: str) -> Path:
              "sets are not tested in the Alps.</li>"
              "<li>The border check assumes forest does not change systematically with the scanning campaign. The campaign "
              "blocks follow administrative and flight boundaries, not landscape, so this should hold on average.</li></ul>"
-             "<p class='muted'>Code, inputs and per-site metrics: <code>processing_pipeline/optimize_params/</code> "
+             "<p class='muted'>Code, inputs and per-site metrics: <code>processing_pipeline/bayern/kp_param_tuning/</code> "
              "(<code>results/eval.csv</code>, <code>results/border.csv</code>, <code>results/fronts/</code>, "
              "<code>README.md</code>).</p></div>")
     h.append("</main>")
@@ -888,7 +888,7 @@ def round3(IM, ev: pd.DataFrame, mode: str) -> list[str]:
              "production run with the same set feature for feature. The tiles are cut by mapant-nf’s <code>make_vector_tiles.py</code> and drawn with the style "
              "<code>make_viewer.py</code> makes, as in the vector version of the mapant-bayern webapp, with each set’s own "
              "green tones. Any LAS 1.4 set can be combined with any LAS 1.2 set, in two synchronised maps.</p>"
-             "<p>Run: <code>python3 work/compare/serve.py</code> in <code>processing_pipeline/optimize_params/</code>, then "
+             "<p>Run: <code>python3 work/compare/serve.py</code> in <code>processing_pipeline/bayern/kp_param_tuning/</code>, then "
              "open <code>http://localhost:8765/</code> (it needs HTTP range requests, so opening the file directly does "
              "not work). Everything is local except the optional OSM background. The map starts at zoom 12, as in "
              "production; each area opens on a forested stretch of the generation border.</p></div>")

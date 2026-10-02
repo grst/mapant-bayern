@@ -6,7 +6,7 @@ description: Tune karttapullautin (pullauta) vegetation and open-land parameters
 # Tuning karttapullautin for a LiDAR region
 
 This is the procedure from the mapant-bayern parameter study
-(`processing_pipeline/optimize_params/`, three rounds, 2026-09/10) packaged for reuse. All scripts
+(`processing_pipeline/bayern/kp_param_tuning/`, three rounds, 2026-09/10) packaged for reuse. All scripts
 are in `scripts/`; every one takes `--config <region.yaml>` (or `KPT_CONFIG`) and has its details
 in its docstring (`python scripts/X.py -h`). Method details: `reference/method.md`. What Bavaria
 found (use it as the prior): `reference/bavaria.md`.

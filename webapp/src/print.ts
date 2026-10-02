@@ -206,7 +206,7 @@ export async function exportPdf(request: PrintRequest): Promise<void> {
     // Read back after the render, so the drawing buffer has to survive it.
     canvasContextAttributes: {preserveDrawingBuffer: true, antialias: true},
   });
-  provideIsomIcons(map, icons, pixelRatio);
+  provideIsomIcons(map, icons);
   map.showTileBoundaries = request.showTileBoundaries;
 
   try {

@@ -1,6 +1,6 @@
 # What Bavaria found (prior for other regions)
 
-Source: `processing_pipeline/optimize_params/` (README, report), karttapullautin #3 (c2a060f),
+Source: `processing_pipeline/bayern/kp_param_tuning/` (README, report), karttapullautin #3 (c2a060f),
 vector output, 2026-09/10. 71,979 tiles of 1 km², EPSG:25832.
 
 ## Batch effect

@@ -51,7 +51,7 @@ def main() -> int:
     for name in sys.argv[1:]:
         header = (f"# pullauta.ini for mapant-bayern, parameter set '{name}'.\n"
                   f"# karttapullautin grst/karttapullautin#3 (c2a060f) defaults, with the keys the Bavarian\n"
-                  f"# parameter study tuned marked below. See processing_pipeline/optimize_params/README.md.")
+                  f"# parameter study tuned marked below. See processing_pipeline/bayern/kp_param_tuning/README.md.")
         print(write(name, sets[name], header))
     return 0
 

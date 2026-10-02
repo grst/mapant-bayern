@@ -71,7 +71,7 @@ export function createMap(
   map.touchZoomRotate.disableRotation();
   map.keyboard.disableRotation();
   map.showTileBoundaries = visible.grid;
-  provideIsomIcons(map, rasterizeIsomIcons(window.devicePixelRatio), window.devicePixelRatio);
+  provideIsomIcons(map, rasterizeIsomIcons(window.devicePixelRatio));
 
   map.addControl(new NavigationControl({showCompass: false}), 'top-left');
   // The whole page area under the navbar, so the footer's notices stay out of the way.

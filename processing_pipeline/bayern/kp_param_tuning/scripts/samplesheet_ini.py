@@ -25,8 +25,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 PIPELINE = ROOT.parent
 INI = {
-    "1.2": "optimize_params/params/pullauta.bayern-las12.ini",
-    "1.4": "optimize_params/params/pullauta.bayern-las14.ini",
+    "1.2": "kp_param_tuning/params/pullauta.bayern-las12.ini",
+    "1.4": "kp_param_tuning/params/pullauta.bayern-las14.ini",
 }
 
 

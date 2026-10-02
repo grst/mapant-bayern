@@ -11,8 +11,8 @@
 # (`VITE_MAPANT_PMTILES`, see webapp/README.md) or with results_alpsee/map/index.html.
 
 tiles_csv: input/laz_tiles.csv
-pullauta_ini: optimize_params/params/pullauta.bayern-las14.ini
-vectorconf: kp/osm.txt
+pullauta_ini: kp_param_tuning/params/pullauta.bayern-las14.ini
+vectorconf: ../kp/osm.txt
 
 region_bbox: '10.141566,47.552616,10.272019,47.617981'
 region_bbox_crs: lonlat

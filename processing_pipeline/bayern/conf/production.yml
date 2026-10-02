@@ -28,8 +28,8 @@ max_zoom: 15
 
 # The look of the map. Each tile's ini comes from the tiles CSV (`pullauta_ini`, by LAS version;
 # see optimize_params/README.md); this one is only the default for a tile that names none.
-pullauta_ini: optimize_params/params/pullauta.bayern-las14.ini
-vectorconf: kp/osm.txt
+pullauta_ini: kp_param_tuning/params/pullauta.bayern-las14.ini
+vectorconf: ../kp/osm.txt
 
 grid_size: 16
 pullauta_processes: 16

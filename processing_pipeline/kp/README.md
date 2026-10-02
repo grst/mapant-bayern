@@ -17,6 +17,9 @@ What it changes from karttapullautin's own `osm.txt`:
 * **Power lines**: `power=line` and `power=minor_line` (516). The original `power!=` would match
   every way once `power` is a column, towers and all; and it was never a column before, so power
   lines were missing altogether.
+* **Pylons**: OSM's `power=tower` and `power=pole` nodes, as `516P` rules. karttapullautin draws
+  a bar across the power line at each of them (ISOM 510: "the bars show the exact location of the
+  pylons").
 * **Lakes and rivers** as rules of their own, both 301: a `river` is `natural=water` with
   `water=river|stream|canal|ditch|drain`, or `waterway=riverbank`; anything else with
   `natural=water` or a `water` tag is a `lake`. The pullauta inis set `contour_mask=lake`:

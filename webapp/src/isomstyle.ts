@@ -10,7 +10,7 @@
 
 import type {ExpressionSpecification, LayerSpecification, Map} from 'maplibre-gl';
 import isomStyle from '@metsa/isom-maplibre/style.json';
-import {ICONS} from '@metsa/isom-maplibre';
+import {ICONS, isomImage, type IsomImage} from '@metsa/isom-maplibre';
 
 /**
  * isom-maplibre's tables mix lines and areas under one code -- a lake and its bank are both
@@ -76,40 +76,29 @@ export function isomLayers(options: IsomLayerOptions): LayerSpecification[] {
   return layers;
 }
 
-/** The style's patterns and point symbols as bitmaps, keyed by their image id ("isom:407"). */
-export type IsomIcons = Record<string, ImageData>;
+/** The style's images by id ("isom:407"), drawn for one pixel ratio. */
+export type IsomIcons = Record<string, IsomImage>;
 
 /**
- * Rasterises the style's SVG images. At `pixelRatio` rather than isom-maplibre's fixed 2x, so a
- * print at 600 dpi does not magnify a screen bitmap.
+ * Draws the style's images at `pixelRatio` rather than isom-maplibre's default, so a print at
+ * 600 dpi does not magnify a screen bitmap. The point symbols come as distance fields, which
+ * stay sharp however far the style magnifies them; the fill patterns come once per zoom.
  */
 export async function rasterizeIsomIcons(pixelRatio: number): Promise<IsomIcons> {
-  const ratio = Math.max(2, Math.ceil(pixelRatio));
   const entries = await Promise.all(
-    Object.entries(ICONS).map(async ([id, svg]) => {
-      const image = new Image();
-      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(image.width * ratio);
-      canvas.height = Math.round(image.height * ratio);
-      const context = canvas.getContext('2d')!;
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      return [id, context.getImageData(0, 0, canvas.width, canvas.height)] as const;
-    }),
+    Object.keys(ICONS).map(async (id) => [id, await isomImage(id, Math.max(2, pixelRatio))] as const),
   );
-  return Object.fromEntries(entries);
+  return Object.fromEntries(entries.filter((entry): entry is [string, IsomImage] => entry[1] !== undefined));
 }
 
-/** Adds the images to a map as it asks for them; `pixelRatio` is the one they were rasterised at. */
-export function provideIsomIcons(map: Map, icons: IsomIcons | Promise<IsomIcons>, pixelRatio: number): void {
-  const ratio = Math.max(2, Math.ceil(pixelRatio));
+/** Adds the images to a map as it asks for them. */
+export function provideIsomIcons(map: Map, icons: IsomIcons | Promise<IsomIcons>): void {
   // MapLibre waits for the resolver before it counts an image as missing, so a symbol is drawn
   // with its image on the first frame that has the image at all.
   map.setMissingStyleImageResolver(async (id) => {
-    const ready = await icons;
-    if (ready[id] && !map.hasImage(id)) {
-      map.addImage(id, ready[id], {pixelRatio: ratio});
+    const image = (await icons)[id];
+    if (image && !map.hasImage(id)) {
+      map.addImage(id, image.data, {pixelRatio: image.pixelRatio, sdf: image.sdf});
     }
   });
 }

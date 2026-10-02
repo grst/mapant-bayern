@@ -1,6 +1,8 @@
 barrier|524|barrier!=
 power line|516|power=line
 power line|516|power=minor_line
+pylon|516P|power=tower
+pylon|516P|power=pole
 building|526|building!=
 settlement|527|landuse=residential
 settlement|527|landuse=farmyard
