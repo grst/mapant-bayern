@@ -76,7 +76,7 @@ range requests from an R2 bucket (`MAPANT_PMTILES_URL` in `src/archive.ts`), in 
 of [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
 
 * **The style is a fork of isom-maplibre** (branch `fix/iof-colour-order` on top of upstream
-  `3c8ee09`), packed into `vendor/metsa-isom-maplibre-0.1.1-mapant.2.tgz` so the build needs nothing
+  `3c8ee09`), packed into `vendor/metsa-isom-maplibre-0.1.1-mapant.3.tgz` so the build needs nothing
   outside this repository. It stacks the symbols in the IOF colour order for ISOM 2017-2 ("IOF Map
   Specifications – Printing and Colour Definitions", 2022, §7), where upstream 0.1.0 did not: olive
   (520) above the greens, streams above the contours, lake fill below wide roads and large buildings.

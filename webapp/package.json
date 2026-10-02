@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
-    "@metsa/isom-maplibre": "file:vendor/metsa-isom-maplibre-0.1.1-mapant.2.tgz",
+    "@metsa/isom-maplibre": "file:vendor/metsa-isom-maplibre-0.1.1-mapant.3.tgz",
     "@types/proj4": "^2.5.6",
     "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
