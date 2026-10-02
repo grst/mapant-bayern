@@ -1,10 +1,9 @@
 import {expect, test, devices, type Page} from '@playwright/test';
 
 /**
- * Touch gestures on a phone-sized viewport. OpenLayers builds its default
- * interactions with `onFocusOnly: true`, which – because the map container has a
- * `tabindex` – used to swallow every gesture until something focused the map, so
- * the first swipe of a visit did nothing. See src/map.ts.
+ * Touch gestures on a phone-sized viewport: the first gesture of a visit has to
+ * move the map, without anything having focused it first. (OpenLayers' default
+ * interactions used to swallow gestures until the map had the focus.)
  */
 test.use({...devices['Pixel 7']});
 
@@ -16,7 +15,7 @@ async function stubTiles(page: Page): Promise<void> {
   await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
-  await page.route(/mapant-tiles\.orienteering-allgaeu\.de/, (route) => route.abort());
+  await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
 }
 
 type Point = {x: number; y: number};
@@ -31,8 +30,8 @@ async function gesture(page: Page, frames: Point[][]): Promise<void> {
   await client.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: points(frames[0])});
   for (const frame of frames.slice(1)) {
     await client.send('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: points(frame)});
-    // A frame's worth of pause: OpenLayers measures the drag speed to decide how
-    // far to fling the map afterwards, and instant moves read as an infinite one.
+    // A frame's worth of pause: the map measures the drag speed to decide how
+    // far to fling it afterwards, and instant moves read as an infinite one.
     await page.waitForTimeout(16);
   }
   await client.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});

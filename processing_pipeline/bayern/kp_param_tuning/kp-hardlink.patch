@@ -1,0 +1,25 @@
+diff --git a/src/process.rs b/src/process.rs
+index dbf0990..66d78e6 100644
+--- a/src/process.rs
++++ b/src/process.rs
+@@ -442,8 +442,18 @@ pub fn process_tile(
+         writer.finish().expect("Unable to finish writing");
+     } else if filename.ends_with(".xyz.bin") {
+         info!("Copying input file");
+-        fs.copy(input_file, target_file)
+-            .expect("Could not copy file");
++        // optimize_params: a hard link instead of a copy when both are on the local disk (the
++        // point cloud is only read from here on). The target is removed first: in batch mode
++        // it may still be a link to this very input from the previous tile, and copying a file
++        // onto itself would empty it.
++        let linked = std::fs::metadata(tmpfolder).is_ok() && {
++            let _ = std::fs::remove_file(&target_file);
++            std::fs::hard_link(input_file, &target_file).is_ok()
++        };
++        if !linked {
++            fs.copy(input_file, target_file)
++                .expect("Could not copy file");
++        }
+     } else {
+         return Err(format!("Unsupported input file: {}", input_file.display()).into());
+     }

@@ -12,15 +12,21 @@
     "fetch-places": "node scripts/fetch-places.mjs"
   },
   "dependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
+    "@metsa/isom-maplibre": "^0.1.0",
+    "@types/proj4": "^2.5.6",
     "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
+    "maplibre-gl": "^6.11.2",
     "marked": "^18.0.9",
-    "ol": "^10.10.0",
-    "pmtiles": "^4.4.1"
+    "pbf": "^5.1.2",
+    "pmtiles": "^4.5.0",
+    "proj4": "^2.22.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
     "@types/node": "^26.1.2",
+    "ocad2geojson": "^2.1.23",
     "typescript": "^5.9.0",
     "vite": "^8.2.0"
   }

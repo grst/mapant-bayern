@@ -1,0 +1,30 @@
+# Region config for the kp_tuning scripts. Paths are relative to this file.
+name: Rheinland-Pfalz
+title: mapant-rlp parameter sets            # viewer title
+index: ../../input/laz_tiles_rlp.csv         # mapant samplesheet: tile,url,size_bytes,sha256,crs,min_x,...
+work: work                                   # bulky data (laz, point clouds, runs) -- git-ignored
+results: results                             # small results (tables, sets, inis, reports)
+sites_input: sites_input.yaml                # the chosen reference maps (see scripts/sites.py)
+sites: sites.yaml                            # written by sites.py
+
+kp_binary: /path/to/karttapullautin/target/release/pullauta   # vector build + patches/kp-hardlink.patch
+kp_default_ini: /path/to/karttapullautin/pullauta.default.ini
+mapant_nf: /path/to/mapant-nf                # bin/make_vector_tiles.py, bin/make_viewer.py, assets/viewer
+tiler_image: localhost/mapant/tiler:latest   # podman image with tippecanoe + python (mapant-nf)
+user_agent: "mapant-rlp parameter study (you@example.org)"
+min_free_gb: 35                              # downloads pause below this
+
+omaps:
+  # bbox: [6.1, 48.9, 8.6, 50.95]            # default: the index's lon/lat extent
+  min_scale: 7500                            # leave out sprint/urban maps (1:4000, 1:5000)
+
+# visual check (render_area.py, compare.py); left out of the seam blocks
+areas:
+  pfaelzerwald: {lonlat: [7.75, 49.25, 7.95, 49.40], start: [7.85, 49.32, 13.5]}
+render_sets:                                 # per tile group (groups.csv), sets from results/sets.json
+  "1.4": [kp_default, 1.4-balanced, 1.4-clean]
+group_labels: {"1.4": "LAS 1.4 tiles"}
+set_labels: {1.4-balanced: "balanced", 1.4-clean: "clean"}
+presets:
+  - {label: "kp default", sets: {"1.4": kp_default}}
+  - {label: "balanced", sets: {"1.4": 1.4-balanced}}

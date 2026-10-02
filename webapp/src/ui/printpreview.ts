@@ -1,41 +1,54 @@
-import Feature from 'ol/Feature';
-import VectorLayer from 'ol/layer/Vector';
-import VectorSource from 'ol/source/Vector';
-import Fill from 'ol/style/Fill';
-import Stroke from 'ol/style/Stroke';
-import Style from 'ol/style/Style';
-import type {Coordinate} from 'ol/coordinate';
+import type {GeoJSONSource, Map} from 'maplibre-gl';
+import type {XY} from '../geo';
+import {EMPTY_COLLECTION} from '../layers';
 import {printOutline, type Orientation} from '../print';
 
 export interface PrintPreview {
-  layer: VectorLayer<VectorSource>;
-  show(center: Coordinate, scale: number, orientation: Orientation): void;
+  show(center: XY, scale: number, orientation: Orientation): void;
   hide(): void;
 }
 
 /**
  * The rectangle showing what a print would cover. Lives in the live map only –
- * the print map is built from its own layers, so this never ends up on paper.
+ * the print map is built from its own style, so this never ends up on paper.
  */
-export function createPrintPreview(): PrintPreview {
-  const feature = new Feature();
-  const layer = new VectorLayer({
-    visible: false,
-    source: new VectorSource({features: [feature]}),
-    style: new Style({
-      stroke: new Stroke({color: '#3172ad', width: 2, lineDash: [10, 6]}),
-      fill: new Fill({color: 'rgba(49, 114, 173, 0.07)'}),
-    }),
+export function createPrintPreview(map: Map): PrintPreview {
+  let outline: GeoJSON.FeatureCollection = EMPTY_COLLECTION;
+  const render = () => map.getSource<GeoJSONSource>('print-preview')?.setData(outline);
+
+  map.on('load', () => {
+    map.addSource('print-preview', {type: 'geojson', data: outline});
+    map.addLayer({
+      id: 'print-preview-fill',
+      type: 'fill',
+      source: 'print-preview',
+      paint: {'fill-color': 'rgba(49, 114, 173, 0.07)'},
+    });
+    map.addLayer({
+      id: 'print-preview-line',
+      type: 'line',
+      source: 'print-preview',
+      paint: {'line-color': '#3172ad', 'line-width': 2, 'line-dasharray': [5, 3]},
+    });
   });
 
   return {
-    layer,
     show(center, scale, orientation) {
-      feature.setGeometry(printOutline(center, scale, orientation));
-      layer.setVisible(true);
+      outline = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {type: 'Polygon', coordinates: [printOutline(center, scale, orientation)]},
+          },
+        ],
+      };
+      render();
     },
     hide() {
-      layer.setVisible(false);
+      outline = EMPTY_COLLECTION;
+      render();
     },
   };
 }

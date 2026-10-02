@@ -1,12 +1,7 @@
-import Map from 'ol/Map';
-import View from 'ol/View';
-import {fromExtent} from 'ol/geom/Polygon';
-import {get as getProjection, getPointResolution} from 'ol/proj';
-import type BaseLayer from 'ol/layer/Base';
-import type {Coordinate} from 'ol/coordinate';
-import type {Extent} from 'ol/extent';
-import type Polygon from 'ol/geom/Polygon';
+import {Map, type StyleSpecification} from 'maplibre-gl';
+import {HALF_WORLD, mercatorDistortion, toLonLat, type XY} from './geo';
 import {formatNumber} from './i18n';
+import {provideIsomIcons, rasterizeIsomIcons} from './isomstyle';
 
 /** Paper size in millimetres. A4 only – anything else is a rare need for a map. */
 const PAPER_MM = {portrait: [210, 297], landscape: [297, 210]} as const;
@@ -16,7 +11,7 @@ export type Orientation = keyof typeof PAPER_MM;
 /** The scales orienteering maps are actually printed at. */
 export const SCALES = [4000, 7500, 10000, 15000] as const;
 
-/** OpenLayers styles (fonts, stroke widths) are expressed in CSS pixels. */
+/** Style sizes (fonts, line widths) are CSS pixels, 96 to the inch. */
 const CSS_DPI = 96;
 
 const MM_PER_INCH = 25.4;
@@ -62,9 +57,27 @@ function canvasFits(width: number, height: number): boolean {
   return usable;
 }
 
+/**
+ * The largest drawing buffer WebGL will hand out along either axis. Over it, the browser shrinks
+ * the buffer without a word and stretches the result, which would be a blurred page.
+ */
+function webglLimit(): number {
+  const gl = document.createElement('canvas').getContext('webgl2');
+  if (!gl) {
+    return 4096;
+  }
+  const dims = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array;
+  const limit = Math.min(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number, dims[0], dims[1]);
+  gl.getExtension('WEBGL_lose_context')?.loseContext();
+  return limit;
+}
+
 /** The finest density this browser will render a full page at. */
-function dpiForPaper(orientation: Orientation): number {
-  const usable = DENSITIES_DPI.find((dpi) => canvasFits(...mapSizePx(orientation, dpi)));
+function dpiForPaper(orientation: Orientation, glLimit: number): number {
+  const usable = DENSITIES_DPI.find((dpi) => {
+    const [width, height] = mapSizePx(orientation, dpi);
+    return Math.max(width, height) + dpi / CSS_DPI < glLimit && canvasFits(width, height);
+  });
   if (!usable) {
     console.warn('Printing at the lowest density: this browser has a small canvas limit');
     return DENSITIES_DPI[DENSITIES_DPI.length - 1];
@@ -78,26 +91,30 @@ function mapSizePx(orientation: Orientation, dpi: number): [number, number] {
   return [Math.round((width / MM_PER_INCH) * dpi), Math.round((height / MM_PER_INCH) * dpi)];
 }
 
-/** EPSG:3857 metres shrink towards the poles; one metre of ground is this many. */
-function distortionAt(center: Coordinate): number {
-  const projection = getProjection('EPSG:3857');
-  return projection ? getPointResolution(projection, 1, center) : 1;
+/** Ground metres per EPSG:3857 unit at a point: web mercator stretches towards the poles. */
+function distortionAt(center: XY): number {
+  return mercatorDistortion(center);
 }
 
 /**
- * View resolution that puts the map on paper at exactly 1:scale, for a map
- * rendered at `dpi` with one canvas pixel per pixel of output.
+ * View resolution, in EPSG:3857 units per pixel, that puts the map on paper at exactly 1:scale for
+ * a map rendered at `dpi`.
  *
  * One pixel is 1/dpi inch of paper, which at 1:scale is `scale/dpi` inches of
  * ground; the distortion turns that ground distance into projected units.
  */
-export function resolutionForScale(scale: number, center: Coordinate, dpi = CSS_DPI): number {
+export function resolutionForScale(scale: number, center: XY, dpi = CSS_DPI): number {
   const groundMetresPerPixel = ((MM_PER_INCH / dpi) * scale) / 1000;
   return groundMetresPerPixel / distortionAt(center);
 }
 
-/** The ground area a print would cover, for the preview rectangle. */
-export function printExtent(center: Coordinate, scale: number, orientation: Orientation): Extent {
+/** MapLibre's zoom for a resolution in EPSG:3857 units per CSS pixel: zoom 0 is one 512 px world. */
+export function zoomForResolution(resolution: number): number {
+  return Math.log2((2 * HALF_WORLD) / 512 / resolution);
+}
+
+/** The ground area a print would cover, as [minX, minY, maxX, maxY] in EPSG:3857. */
+export function printExtent(center: XY, scale: number, orientation: Orientation): [number, number, number, number] {
   const [widthM, heightM] = printGroundSize(scale, orientation);
   const distortion = distortionAt(center);
   const halfWidth = widthM / 2 / distortion;
@@ -105,8 +122,17 @@ export function printExtent(center: Coordinate, scale: number, orientation: Orie
   return [center[0] - halfWidth, center[1] - halfHeight, center[0] + halfWidth, center[1] + halfHeight];
 }
 
-export function printOutline(center: Coordinate, scale: number, orientation: Orientation): Polygon {
-  return fromExtent(printExtent(center, scale, orientation));
+/** The same area as a closed lon/lat ring, for the preview rectangle. */
+export function printOutline(center: XY, scale: number, orientation: Orientation): [number, number][] {
+  const [minX, minY, maxX, maxY] = printExtent(center, scale, orientation);
+  const corners: XY[] = [
+    [minX, minY],
+    [maxX, minY],
+    [maxX, maxY],
+    [minX, maxY],
+    [minX, minY],
+  ];
+  return corners.map(toLonLat);
 }
 
 /** Ground size of a print in metres, e.g. to show "2.0 × 2.8 km" in the UI. */
@@ -115,97 +141,77 @@ export function printGroundSize(scale: number, orientation: Orientation): [numbe
   return [(width * scale) / 1000, (height * scale) / 1000];
 }
 
-/** What the print map's layers have to know about the paper they draw on. */
-export interface PrintLayerOptions {
-  /**
-   * Factor for style sizes given in CSS pixels. The print map renders one canvas
-   * pixel per pixel of output, so fonts, stroke widths and symbol radii have to
-   * be scaled up by hand to keep the size they have on screen.
-   */
-  styleScale: number;
-  /**
-   * The view resolution this scale corresponds to on screen. Anything that keys
-   * off the view resolution – which on the print map is `styleScale` times finer
-   * than what the paper shows – can use it to stay in step with the screen.
-   */
-  screenResolution: number;
-  /**
-   * Tiles a layer has to keep at once. A page at 600 dpi covers upwards of six
-   * hundred tiles, well past the 512 OpenLayers caches by default, and a cache
-   * that cannot hold the page evicts tiles that are still being waited for.
-   */
-  tileCacheSize: number;
-}
-
 export interface PrintRequest {
   scale: number;
   orientation: Orientation;
-  center: Coordinate;
-  /** Fresh layers for the print map – layers cannot be shared between maps. */
-  createLayers(options: PrintLayerOptions): BaseLayer[];
+  /** Centre of the print area, in EPSG:3857. */
+  center: XY;
+  /** The style for the print map: the live map's, reading the deepest tiles. */
+  style: StyleSpecification;
+  showTileBoundaries: boolean;
   /** Plain-text copyright notices for the footer. */
   attribution: string;
   fileName: string;
 }
 
 /**
- * Rendering a full page of tiles can take a while – it is upwards of six hundred
- * of them, around 20 MB – but don't wait forever.
+ * Rendering a full page can take a while – it is up to a hundred of the pyramid's deepest tiles,
+ * some tens of MB – but don't wait forever.
  */
 const RENDER_TIMEOUT_MS = 300_000;
 
 /**
- * Renders the print area into an off-screen map at print density and saves it as
- * a PDF. Everything happens in the browser: a second map is built whose viewport
- * is the paper measured in output pixels, at `pixelRatio` 1.
+ * Renders the print area into an off-screen map at print density and saves it as a PDF.
+ * Everything happens in the browser.
  *
- * The pixel ratio is what decides how sharp the result is. OpenLayers picks the
- * tile zoom level from the view resolution alone and then blows the tiles up by
- * the pixel ratio, so a print map at `pixelRatio = dpi/96` fetches the tiles a
- * screen would use and magnifies them – a page of any density carrying 96 dpi of
- * map. One canvas pixel per pixel of output instead means the zoom level is chosen
- * for the paper. The price is that CSS-pixel style sizes no longer scale by
- * themselves, so the layers are asked to scale them (`PrintLayerOptions`).
+ * The print map is laid out at the paper's size in CSS pixels, at the zoom that puts it at the
+ * requested scale, and drawn at `pixelRatio = dpi / 96`. Being vector tiles, the map is drawn anew
+ * at that density rather than magnified, and every size the styles give in CSS pixels -- line
+ * widths, symbols, labels -- comes out on paper at the size it has on screen. What a pixel ratio
+ * does not change is which tiles MapLibre reads, so the print style declares them smaller than
+ * they are (`StyleOptions.print`): the page is drawn from the pyramid's deepest level.
  */
 export async function exportPdf(request: PrintRequest): Promise<void> {
   const {orientation, scale, center} = request;
   const [mapWidthMm, mapHeightMm] = mapSizeMm(orientation);
-  const dpi = dpiForPaper(orientation);
+  const glLimit = webglLimit();
+  const dpi = dpiForPaper(orientation, glLimit);
   const [widthPx, heightPx] = mapSizePx(orientation, dpi);
-  const styleScale = dpi / CSS_DPI;
-  // Room for the page itself even when a layer's tiles are twice as fine as the
-  // page along each axis, plus a margin for the row and column that overlap it.
-  const tileCacheSize = 4 * Math.ceil((widthPx / 256 + 1) * (heightPx / 256 + 1));
+  const pixelRatio = dpi / CSS_DPI;
+  // Whole CSS pixels, rounded up: the canvas is then at least the page, and the page is cut from
+  // its middle. Stretching it to fit instead would put the print off its scale by up to a pixel.
+  const cssWidth = Math.ceil(widthPx / pixelRatio);
+  const cssHeight = Math.ceil(heightPx / pixelRatio);
 
   const container = document.createElement('div');
   container.className = 'print-map';
-  container.style.width = `${widthPx}px`;
-  container.style.height = `${heightPx}px`;
+  container.style.width = `${cssWidth}px`;
+  container.style.height = `${cssHeight}px`;
   document.body.append(container);
 
+  // Ready before the map exists, so its first render finds every pattern it asks for.
+  const icons = await rasterizeIsomIcons(pixelRatio);
   const map = new Map({
-    target: container,
-    pixelRatio: 1,
-    controls: [],
-    interactions: [],
-    layers: request.createLayers({
-      styleScale,
-      screenResolution: resolutionForScale(scale, center),
-      tileCacheSize,
-    }),
-    view: new View({
-      center,
-      resolution: resolutionForScale(scale, center, dpi),
-      enableRotation: false,
-      // The view must not snap the resolution: it is what fixes the scale.
-      constrainResolution: false,
-    }),
+    container,
+    style: request.style,
+    center: toLonLat(center),
+    zoom: zoomForResolution(resolutionForScale(scale, center)),
+    minZoom: 0,
+    maxZoom: 24,
+    pixelRatio,
+    maxCanvasSize: [glLimit, glLimit],
+    interactive: false,
+    attributionControl: false,
+    fadeDuration: 0,
+    // Read back after the render, so the drawing buffer has to survive it.
+    canvasContextAttributes: {preserveDrawingBuffer: true, antialias: true},
   });
+  provideIsomIcons(map, icons, pixelRatio);
+  map.showTileBoundaries = request.showTileBoundaries;
 
   try {
     await renderComplete(map);
-    // Read the canvases back in the same task, before anything else can render.
-    const canvas = flattenLayers(container, widthPx, heightPx);
+    const canvas = cropToPage(map.getCanvas(), cssWidth, widthPx / pixelRatio, heightPx / pixelRatio, widthPx, heightPx);
 
     // Loaded on demand: jsPDF is bigger than the rest of the app put together.
     const {jsPDF} = await import('jspdf');
@@ -224,38 +230,50 @@ export async function exportPdf(request: PrintRequest): Promise<void> {
 
     pdf.save(request.fileName);
   } finally {
-    map.setTarget(undefined);
-    map.dispose();
+    map.remove();
     container.remove();
   }
 }
 
+/**
+ * Resolves once the map has drawn everything it is going to. That is MapLibre's `idle`, which it
+ * checks for only after a frame, so a last resource that settles without asking for one -- a
+ * failed request does that -- would leave it never fired. The map is therefore given another frame
+ * whenever it reports itself loaded and has not gone idle yet.
+ */
 function renderComplete(map: Map): Promise<void> {
   return new Promise((resolve) => {
+    const done = () => {
+      window.clearTimeout(timer);
+      window.clearInterval(nudge);
+      resolve();
+    };
     const timer = window.setTimeout(() => {
       console.warn('Print rendering timed out; exporting what has loaded so far');
-      resolve();
+      done();
     }, RENDER_TIMEOUT_MS);
-    map.once('rendercomplete', () => {
-      window.clearTimeout(timer);
-      resolve();
-    });
+    const nudge = window.setInterval(() => {
+      if (map.loaded()) {
+        map.triggerRepaint();
+      }
+    }, 500);
+    map.once('idle', done);
   });
 }
 
 /**
- * Composites every layer canvas of a map into one, in the spirit of the
- * OpenLayers "Export PDF" example (the WebGL layers keep their drawing buffer, so
- * they can be read back here).
- *
- * The print map renders at pixelRatio 1, so a layer canvas maps 1:1 onto the
- * output – except that a layer may carry a CSS transform, and a WebGL canvas is
- * sized by its drawing buffer and stretched to its box by CSS. Both are handled
- * by going through the canvas' layout size:
- *
- *   output transform = cssTransform · scale(boxSize / canvasSize)
+ * The page, cut from the middle of the map's canvas onto an opaque one of exactly the page's
+ * pixels. The canvas is normally at the requested pixel ratio; should MapLibre have lowered it to
+ * stay within the canvas limit, the cut is scaled to match rather than coming out too small.
  */
-function flattenLayers(container: HTMLElement, width: number, height: number): HTMLCanvasElement {
+function cropToPage(
+  source: HTMLCanvasElement,
+  cssWidth: number,
+  pageCssWidth: number,
+  pageCssHeight: number,
+  width: number,
+  height: number,
+): HTMLCanvasElement {
   const target = document.createElement('canvas');
   target.width = width;
   target.height = height;
@@ -269,25 +287,19 @@ function flattenLayers(container: HTMLElement, width: number, height: number): H
   context.fillStyle = '#ffffff';
   context.fillRect(0, 0, width, height);
 
-  container.querySelectorAll<HTMLCanvasElement>('.ol-layer canvas, canvas.ol-layer').forEach((canvas) => {
-    if (canvas.width === 0 || canvas.height === 0) {
-      return;
-    }
-    const parent = canvas.parentNode as HTMLElement | null;
-    const opacity = (parent?.style.opacity || canvas.style.opacity) as string;
-    context.globalAlpha = opacity === '' ? 1 : Number(opacity);
-
-    // CSS pixels per canvas pixel. offsetWidth is the layout size, i.e. before
-    // the CSS transform is applied.
-    const boxScaleX = (canvas.offsetWidth || canvas.width) / canvas.width;
-    const boxScaleY = (canvas.offsetHeight || canvas.height) / canvas.height;
-    const matrix = canvas.style.transform.match(/^matrix\(([^(]*)\)$/);
-    const [a, b, c, d, e, f] = matrix ? matrix[1].split(',').map(Number) : [1, 0, 0, 1, 0, 0];
-    context.setTransform(a * boxScaleX, b * boxScaleX, c * boxScaleY, d * boxScaleY, e, f);
-    context.drawImage(canvas, 0, 0);
-  });
-
-  context.globalAlpha = 1;
-  context.setTransform(1, 0, 0, 1, 0, 0);
+  const ratio = source.width / cssWidth;
+  const sourceWidth = pageCssWidth * ratio;
+  const sourceHeight = pageCssHeight * ratio;
+  context.drawImage(
+    source,
+    (source.width - sourceWidth) / 2,
+    (source.height - sourceHeight) / 2,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    width,
+    height,
+  );
   return target;
 }

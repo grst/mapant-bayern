@@ -20,7 +20,7 @@ const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
-/** A button styled like OpenLayers' own controls, labelled from the i18n tables. */
+/** A button styled like MapLibre's own controls, labelled from the i18n tables. */
 export function controlButton(icon: IconName, titleKey: Key): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';

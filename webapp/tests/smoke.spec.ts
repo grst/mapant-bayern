@@ -3,7 +3,7 @@ import {encodeDrawings} from '../src/drawings';
 
 /**
  * The external tile services are stubbed out: the tests are about the app, and
- * CI should not depend on (or hammer) openstreetmap.org, the PMTiles host or
+ * CI should not depend on (or hammer) openstreetmap.org, the vector tile host or
  * Mapterhorn. The town names come from the site's own places.geojson.
  */
 async function stubTiles(page: Page): Promise<void> {
@@ -14,7 +14,7 @@ async function stubTiles(page: Page): Promise<void> {
   await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
-  await page.route(/mapant-tiles\.orienteering-allgaeu\.de/, (route) => route.abort());
+  await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
 }
 
 test.beforeEach(async ({page}) => {

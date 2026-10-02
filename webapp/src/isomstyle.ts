@@ -1,0 +1,115 @@
+/**
+ * The orienteering map's look: the ISOM 2017-2 style of isom-maplibre, over the archive mapant-nf
+ * publishes.
+ *
+ * The archive is in the style's own schema -- a layer per table (`contours`, `vegetation_areas`,
+ * ...), each feature with its `isom_code` ("403.000") -- so the style's layers are used as they
+ * are. All that changes is where they read from: the style expects one tile source per table, and
+ * the archive is one source holding all of them.
+ */
+
+import type {ExpressionSpecification, LayerSpecification, Map} from 'maplibre-gl';
+import isomStyle from '@metsa/isom-maplibre/style.json';
+import {ICONS} from '@metsa/isom-maplibre';
+
+/**
+ * isom-maplibre's tables mix lines and areas under one code -- a lake and its bank are both
+ * 301.000 -- and leave it to the layer type which is drawn how. MapLibre, though, fills a line as
+ * if it were closed, and traces a polygon's outline with a line layer, including the edges a tile
+ * was clipped at; mapant-nf writes the line bounding an area -- a lake's bank -- as a line of its
+ * own. So each layer type keeps to its geometry.
+ */
+function geometryFilter(type: string): ExpressionSpecification | undefined {
+  const polygon: ExpressionSpecification = ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]];
+  if (type === 'fill') {
+    return polygon;
+  }
+  if (type === 'line') {
+    return ['!', polygon];
+  }
+  return undefined;
+}
+
+export interface IsomLayerOptions {
+  /** The vector source holding the archive. */
+  source: string;
+  /** Map zoom from which the orienteering map is shown. */
+  minZoom: number;
+}
+
+/**
+ * The style's layers in its own order, which is the ISOM colour order, all reading the archive:
+ * the white paper of its `coverage` layer, the overview pass (below z13, without contours, which
+ * the archive's overview level does not have either) and the detail pass.
+ *
+ * Left out: the style's background, which would paint the whole world white -- the paper is drawn
+ * only where there is map -- and the coverage outline it shows at low zoom, since the
+ * OpenStreetMap background takes over there.
+ */
+export function isomLayers(options: IsomLayerOptions): LayerSpecification[] {
+  const layers: LayerSpecification[] = [];
+  for (const layer of isomStyle.layers as unknown as (LayerSpecification & {
+    metadata?: Record<string, string>;
+    'source-layer'?: string;
+    filter?: unknown;
+    minzoom?: number;
+  })[]) {
+    const pass = layer.metadata?.['isom:pass'];
+    if (pass === 'coverage') {
+      if (layer.type === 'fill' && (layer.minzoom ?? 0) > 0) {
+        layers.push({...layer, id: `isom-${layer.id}`, source: options.source, minzoom: options.minZoom});
+      }
+      continue;
+    }
+    if (pass !== 'detail' && pass !== 'overview') {
+      continue;
+    }
+    const geometry = geometryFilter(layer.type);
+    layers.push({
+      ...layer,
+      filter: geometry ? ['all', geometry, layer.filter] : layer.filter,
+      id: `isom-${layer.id}`,
+      source: options.source,
+      minzoom: Math.max(options.minZoom, layer.minzoom ?? 0),
+    } as LayerSpecification);
+  }
+  return layers;
+}
+
+/** The style's patterns and point symbols as bitmaps, keyed by their image id ("isom:407"). */
+export type IsomIcons = Record<string, ImageData>;
+
+/**
+ * Rasterises the style's SVG images. At `pixelRatio` rather than isom-maplibre's fixed 2x, so a
+ * print at 600 dpi does not magnify a screen bitmap.
+ */
+export async function rasterizeIsomIcons(pixelRatio: number): Promise<IsomIcons> {
+  const ratio = Math.max(2, Math.ceil(pixelRatio));
+  const entries = await Promise.all(
+    Object.entries(ICONS).map(async ([id, svg]) => {
+      const image = new Image();
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(image.width * ratio);
+      canvas.height = Math.round(image.height * ratio);
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return [id, context.getImageData(0, 0, canvas.width, canvas.height)] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
+/** Adds the images to a map as it asks for them; `pixelRatio` is the one they were rasterised at. */
+export function provideIsomIcons(map: Map, icons: IsomIcons | Promise<IsomIcons>, pixelRatio: number): void {
+  const ratio = Math.max(2, Math.ceil(pixelRatio));
+  // MapLibre waits for the resolver before it counts an image as missing, so a symbol is drawn
+  // with its image on the first frame that has the image at all.
+  map.setMissingStyleImageResolver(async (id) => {
+    const ready = await icons;
+    if (ready[id] && !map.hasImage(id)) {
+      map.addImage(id, ready[id], {pixelRatio: ratio});
+    }
+  });
+}

@@ -36,6 +36,12 @@ export const en = {
   'print.busy': 'Rendering…',
   'print.ready': 'PDF saved',
   'print.failed': 'The PDF could not be created',
+  'print.exportOcd': 'Create OCAD file',
+  'print.ocdBusy': 'Converting…',
+  'print.ocdReady': 'OCAD file saved',
+  'print.ocdFailed': 'The OCAD file could not be created',
+  'print.ocdEmpty': 'There is no map data in this area',
+  'print.ocdHint': 'An editable basemap for OCAD or OpenOrienteering Mapper. It needs field work.',
 
   'share.title': 'Copy link to this view',
   'share.copied': 'Link copied to clipboard',
