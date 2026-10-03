@@ -40,8 +40,8 @@ protocol.add(archive);
 export const MAPANT_SOURCE_URL = `pmtiles://${archive.source.getKey()}`;
 
 /**
- * The header, read once before the style is built: the zooms decide where the OpenStreetMap
- * background hands over to the orienteering map. A failed read leaves the defaults, and the tiles
+ * The header, read once before the style is built: the zooms decide where the OpenFreeMap
+ * basemap hands over to the orienteering map. A failed read leaves the defaults, and the tiles
  * then fail on their own, one by one, the way a missing tile does.
  */
 export const ARCHIVE: ArchiveInfo = await archive

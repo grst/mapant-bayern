@@ -44,7 +44,7 @@ export interface IsomLayerOptions {
  *
  * Left out: the style's background, which would paint the whole world white -- the paper is drawn
  * only where there is map -- and the coverage outline it shows at low zoom, since the
- * OpenStreetMap background takes over there.
+ * basemap takes over there.
  */
 export function isomLayers(options: IsomLayerOptions): LayerSpecification[] {
   const layers: LayerSpecification[] = [];

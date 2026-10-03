@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {expect, test, type Page} from '@playwright/test';
 import {serveArchive} from './archive';
+import {stubBasemap} from './basemap';
 
 /** Same stubs as the smoke tests: the app is what is under test, not the tile hosts. */
 async function stubTiles(page: Page, terrainZooms?: number[]): Promise<void> {
@@ -8,7 +9,8 @@ async function stubTiles(page: Page, terrainZooms?: number[]): Promise<void> {
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     'base64',
   );
-  await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) => {
+  await stubBasemap(page);
+  await page.route(/tiles\.mapterhorn\.com/, (route) => {
     const zoom = /tiles\.mapterhorn\.com\/(\d+)\//.exec(route.request().url())?.[1];
     if (zoom) {
       terrainZooms?.push(Number(zoom));

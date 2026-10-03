@@ -1,9 +1,10 @@
 import {expect, test, type Page} from '@playwright/test';
 import {encodeDrawings} from '../src/drawings';
+import {stubBasemap} from './basemap';
 
 /**
  * The external tile services are stubbed out: the tests are about the app, and
- * CI should not depend on (or hammer) openstreetmap.org, the vector tile host or
+ * CI should not depend on (or hammer) openfreemap.org, the vector tile host or
  * Mapterhorn. The town names come from the site's own places.geojson.
  */
 async function stubTiles(page: Page): Promise<void> {
@@ -11,7 +12,8 @@ async function stubTiles(page: Page): Promise<void> {
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     'base64',
   );
-  await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
+  await stubBasemap(page);
+  await page.route(/tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
   await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
@@ -27,6 +29,16 @@ test('renders the map and records the default view in the URL', async ({page}) =
   // Immenstadt im Allgäu at zoom 12.
   await expect.poll(() => page.url()).toMatch(/#map=12\.00\/47\.563\d\d\/10\.214\d\d/);
   await expect(page.locator('#attribution')).toContainText('OpenStreetMap');
+});
+
+test('credits OpenFreeMap only where its basemap is shown', async ({page}) => {
+  // Map zoom 8 (link zoom 9), below the orienteering map.
+  await page.goto('/#map=9/47.5635/10.2142');
+  await expect(page.locator('#attribution')).toContainText('OpenFreeMap');
+
+  await page.goto('/#map=13/47.5635/10.2142');
+  await expect(page.locator('#attribution')).toContainText('OpenStreetMap');
+  await expect(page.locator('#attribution')).not.toContainText('OpenFreeMap');
 });
 
 test('shows the zoom hint only below the orienteering map zoom levels', async ({page}) => {

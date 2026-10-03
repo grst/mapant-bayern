@@ -7,6 +7,7 @@ import type {
   StyleSpecification,
 } from 'maplibre-gl';
 import {ARCHIVE, fetchTile, MAPANT_SOURCE_URL} from './archive';
+import {basemap, BASEMAP_ATTRIBUTION} from './basemap';
 import {isomLayers} from './isomstyle';
 import {registerMergedTiles} from './tilemerge';
 
@@ -41,7 +42,7 @@ addProtocol('mapant-print', async () => ({
   },
 }));
 
-/** Map zoom from which the orienteering map is shown, and below which OpenStreetMap is. */
+/** Map zoom from which the orienteering map is shown, and below which the OpenFreeMap basemap is. */
 export const MAP_MIN_ZOOM = TILES_MIN_ZOOM;
 
 /** Deepest map zoom. Beyond the archive's last level the tiles are drawn overzoomed. */
@@ -98,13 +99,9 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     data,
   });
 
+  const background = basemap(MAP_MIN_ZOOM);
   const sources: Record<string, SourceSpecification> = {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      maxzoom: 19,
-    },
+    ...background.sources,
     mapant: {type: 'vector', url: options.print ? 'mapant-print://' : MAPANT_SOURCE_URL},
     dem: {
       type: 'raster-dem',
@@ -121,8 +118,8 @@ export function createStyle(options: StyleOptions): StyleSpecification {
 
   const layers: LayerSpecification[] = [
     // Only below the orienteering map (a layer's maxzoom is exclusive, its minzoom inclusive),
-    // so nothing is ever fetched from openstreetmap.org while the orienteering map is on screen.
-    {id: 'osm', type: 'raster', source: 'osm', maxzoom: MAP_MIN_ZOOM},
+    // so nothing is ever fetched from openfreemap.org while the orienteering map is on screen.
+    ...background.layers,
     ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}),
     {
       id: 'hillshade',
@@ -144,12 +141,12 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     ...drawingLayers(),
   ];
 
-  return {version: 8, glyphs: GLYPHS_URL, sources, layers};
+  return {version: 8, glyphs: GLYPHS_URL, sprite: background.sprite, sources, layers};
 }
 
 /**
  * Town names, so the label-free orienteering map can be located. Only where the orienteering map
- * is -- below it the OSM background brings its own labels.
+ * is -- below it the basemap brings its own labels.
  */
 function placesLayer(visibility: 'visible' | 'none'): LayerSpecification {
   const place = ['get', 'place'] as ExpressionSpecification;
@@ -221,7 +218,9 @@ function drawingLayers(): LayerSpecification[] {
  */
 export function attributions(zoom: number, visible: Visibility): string[] {
   const notices = [OSM_ATTRIBUTION];
-  if (zoom >= MAP_MIN_ZOOM) {
+  if (zoom < MAP_MIN_ZOOM) {
+    notices.push(BASEMAP_ATTRIBUTION);
+  } else {
     notices.push(...MAPANT_ATTRIBUTION);
   }
   if (visible.hillshade) {

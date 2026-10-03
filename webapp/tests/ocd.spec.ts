@@ -3,13 +3,15 @@ import {expect, test, type Page} from '@playwright/test';
 // itself. AGPL, so it stays a test dependency and is never bundled into the app.
 import {ocadToGeoJson, readOcad} from 'ocad2geojson';
 import {serveArchive} from './archive';
+import {stubBasemap} from './basemap';
 
 async function stubTiles(page: Page): Promise<void> {
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     'base64',
   );
-  await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
+  await stubBasemap(page);
+  await page.route(/tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
   // The map's archive is not part of the built site, so it is served from the fixture, which

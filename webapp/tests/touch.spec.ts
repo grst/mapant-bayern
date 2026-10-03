@@ -1,4 +1,5 @@
 import {expect, test, devices, type Page} from '@playwright/test';
+import {stubBasemap} from './basemap';
 
 /**
  * Touch gestures on a phone-sized viewport: the first gesture of a visit has to
@@ -12,7 +13,8 @@ async function stubTiles(page: Page): Promise<void> {
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     'base64',
   );
-  await page.route(/tile\.openstreetmap\.org|tiles\.mapterhorn\.com/, (route) =>
+  await stubBasemap(page);
+  await page.route(/tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
   await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());

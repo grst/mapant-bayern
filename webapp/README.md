@@ -90,7 +90,7 @@ of [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
   layers are used as they are; `src/isomstyle.ts` only points all of them at the one source, where the
   style expects one source per table.
 * Below z13 the style draws its overview pass, from the same source. The archive's shallowest level is
-  an overview without contours; below it OpenStreetMap's raster takes over (`MAP_MIN_ZOOM`, from the
+  an overview without contours; below it the OpenFreeMap basemap takes over (`src/basemap.ts`) (`MAP_MIN_ZOOM`, from the
   archive's header, which `src/archive.ts` reads before the style is built).
 * Fills draw polygons only and lines draw lines only: MapLibre would otherwise fill an open line, and
   trace the edges a polygon was clipped at.
@@ -161,7 +161,7 @@ Zoom levels as in the share link (256 px tiles, OpenStreetMap's convention).
 
 | Layer | Source | Zoom levels |
 | --- | --- | --- |
-| Background | OpenStreetMap standard tiles | below 12 only – nothing is fetched once the orienteering map takes over |
+| Background | OpenFreeMap vector tiles (OpenMapTiles schema), its Liberty style vendored in `src/basemap/liberty.json` (`npm run fetch-basemap`) | below 12 only – nothing is fetched once the orienteering map takes over |
 | Orienteering map | mapant-nf vector tiles (`{z}/{x}/{y}.pbf`) on R2, in isom-maplibre's ISOM 2017-2 style | 12–16 (overzoomed to 18) |
 | Hill shading | Mapterhorn terrarium DEM, MapLibre's hillshade layer (shadows only) | 0–16 (overzoomed above) |
 | Town names | OpenStreetMap via Overpass | cities and towns 12+, villages 13+ |
