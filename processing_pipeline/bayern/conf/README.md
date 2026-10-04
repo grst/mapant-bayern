@@ -1,8 +1,20 @@
 # karttapullautin configuration for mapant-bayern
 
-## pullauta.ini
+## pullauta.bayern.ini
 
-TODO
+`pullauta.bayern.ini` is the karttapullautin config for every tile, LAS 1.2 and
+LAS 1.4 alike (`input/laz_tiles.csv` names it in `pullauta_ini` for all rows).
+
+- **Vegetation and open land** (white, the three ISOM greens, yellow): set
+  `sw-grad17` of the visual sweep in `karttapullautin_param_tuning/bayern/`
+  (`scripts/sweep_sets.py`), with `vegesimplify=3`. Every vegetation key sits 1/6
+  of the way from karttapullautin's default to the round-3 LAS 1.4 set (the
+  `thresold` ratios geometrically). It was chosen by eye in the comparison viewer
+  over the Allgäu test area. Keys that differ from karttapullautin's default are
+  marked `# mapant-bayern (default: ...)`.
+- **Contours**: `smoothing`, `curviness`, `contour_chaikin` and `contour_mask`
+  are set by hand; see the comments at those keys.
+- Cliffs, dot knolls and undergrowth stay at karttapullautin's defaults.
 
 ## osm.txt
 

@@ -26,9 +26,9 @@ download_limit_rate: '200M'
 base_zoom: 11
 max_zoom: 15
 
-# The look of the map. Each tile's ini comes from the tiles CSV (`pullauta_ini`, by LAS version;
-# see optimize_params/README.md); this one is only the default for a tile that names none.
-pullauta_ini: kp_param_tuning/params/pullauta.bayern-las14.ini
+# The look of the map. The tiles CSV (`pullauta_ini`) names conf/pullauta.bayern.ini for every tile, LAS 1.2
+# and 1.4 alike; this one is only the default for a tile that names none.
+pullauta_ini: conf/pullauta.bayern.ini
 vectorconf: ../kp/osm.txt
 
 grid_size: 16
