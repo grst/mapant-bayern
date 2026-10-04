@@ -18,6 +18,7 @@ as the tiles need them (a tile and its 8 neighbours) and deleted when no remaini
     region.py run <region> [--gen 1.4] [--workers 3]
     region.py check <region> <tile>
     region.py tile <region> [--jobs 4]        # tippecanoe: base.pmtiles + v12_<set>/v14_<set>.pmtiles
+    region.py run|tile <region> --sweep       # the visual sweep around the production ini, on every tile (sweep_sets.py)
 
 Output: work/region/<region>/{base,sets/<set>}/<tile>_vec/<tile>_<layer>.geojson.gz, pmtiles/
 """
@@ -41,6 +42,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 import kp  # noqa: E402
+import sweep_sets  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = kp.WORK
@@ -49,6 +51,7 @@ TILER = "localhost/mapant/tiler:latest"
 NF = WORK / "mapant-nf"
 MAX_ZOOM = 17
 MIN_FREE_GB = 35
+DOWNLOADS = 6  # parallel laz downloads
 
 REGIONS = {
     # Oberallgäu, Kempten to Oberstdorf's north: both generations, pre-Alpine to Alpine
@@ -99,7 +102,9 @@ def neighbours(t: str, known) -> list[str]:
     return [f"{x + dx}_{y + dy}" for dy in (-1, 0, 1) for dx in (-1, 0, 1) if f"{x + dx}_{y + dy}" in known]
 
 
-def sets_for(v: float) -> list[str]:
+def sets_for(v: float, sweep: bool = False) -> list[str]:
+    if sweep:  # the sweep's sets do not depend on the generation
+        return list(sweep_sets.sweep())
     return SETS[v]
 
 
@@ -408,6 +413,54 @@ def revege_tile(region: str, tile: str, v: float, known: set[str], all_sets: dic
     xyz.unlink(missing_ok=True)
 
 
+def sweep_tile(region: str, tile: str, v: float, known: set[str], all_sets: dict, threads: int,
+               crop: Cropper) -> None:
+    """
+    The sweep sets of a tile. One batch run with the production ini and vegeonly=1 gives prod-las14's
+    layers as production writes them and the point cloud for the other sets (vegeonly stage + kp's
+    crop). Contours and knolls are in base/ already; the sweep leaves cliffs at kp's default, so they
+    are kp_default's.
+    """
+    d = WORK / f"region/{region}"
+    marks = d / "done_sweep"
+    marks.mkdir(parents=True, exist_ok=True)
+    todo = [s for s in sets_for(v, sweep=True) if not (marks / f"{tile}.{s}").exists()]
+    if not todo:
+        return
+    xyz = d / f"tmp/{tile}.xyz.bin"
+    prod = "prod-las14"
+    run = batch(tile, known, d, threads, contours_only=False, keep_xyz=xyz,
+                extra={**kp.effective_ini(overrides(prod, all_sets)), **OWNED, "processes": "1",
+                       "savetempfolders": "1", "contoursonly": "0", "vegeonly": "1"})
+    cliffs = d / f"sets/kp_default/{tile}_vec/{tile}_cliffs.geojson.gz"
+    done: dict[str, Path] = {}
+    for s in todo:
+        o = overrides(s, all_sets)
+        out = d / f"sets/{s}/{tile}_vec"
+        out.mkdir(parents=True, exist_ok=True)
+        vk = kp.run_key(tile, "full", "vege", {**kp.effective_ini(o), "vegeonly": "1"})
+        if s == prod:
+            for layer in VEGE_LAYERS:
+                f = run / "out" / f"{tile}_{layer}.geojson"
+                with open(f, "rb") if f.exists() else open(os.devnull, "rb") as fi, \
+                        gzip.open(out / f"{tile}_{layer}.geojson.gz", "wb") as fo:
+                    shutil.copyfileobj(fi, fo)
+        elif vk in done:
+            for layer in VEGE_LAYERS:
+                shutil.copy(done[vk] / f"{tile}_{layer}.geojson.gz", out)
+        else:
+            tmp = stage(xyz, "vege", o, d / f"tmp/{tile}_vege", threads)
+            for layer in VEGE_LAYERS:
+                crop(tmp / f"{layer}.geojson", out / f"{tile}_{layer}.geojson.gz", tile)
+            shutil.rmtree(tmp.parent)
+        if cliffs.exists():
+            shutil.copy(cliffs, out)
+        done[vk] = out
+        (marks / f"{tile}.{s}").write_text("")
+    shutil.rmtree(run)
+    xyz.unlink(missing_ok=True)
+
+
 # --------------------------------------------------------------------------------------------
 # driver: download ahead, process, delete laz nobody needs any more
 
@@ -421,12 +474,14 @@ def download(tile: str) -> None:
     if f.exists():
         return
     tmp = f.with_suffix(f".part{os.getpid()}_{threading.get_ident()}")  # two passes may fetch the same file
-    for attempt in range(6):
-        if subprocess.run(["curl", "-sSf", "--retry", "3", "-o", str(tmp), URL.format(tile)]).returncode == 0:
+    # the server drops connections mid-file now and then: resume (-C -) instead of starting over
+    for attempt in range(10):
+        if subprocess.run(["curl", "-sSf", "-C", "-", "--retry", "5", "--retry-all-errors", "--retry-delay", "3",
+                           "-o", str(tmp), URL.format(tile)]).returncode == 0:
             tmp.rename(f)
             return
-        tmp.unlink(missing_ok=True)
-        time.sleep(20 * (attempt + 1))
+        time.sleep(5 * (attempt + 1))
+    tmp.unlink(missing_ok=True)
     raise RuntimeError(f"download {tile} failed")
 
 
@@ -437,7 +492,7 @@ def protected() -> set[str]:
 
 
 def run(region: str, gens: list[float], workers: int, threads: int, reverse: bool = False,
-        revege: bool = False) -> None:
+        revege: bool = False, sweep: bool = False, limit: int = 0) -> None:
     """
     reverse=True is a helper next to a running pass: it takes the queue from the end and stops
     short of the tiles the other pass has started (a margin of 12 queue places), so that the two
@@ -446,7 +501,7 @@ def run(region: str, gens: list[float], workers: int, threads: int, reverse: boo
     d = WORK / f"region/{region}"
     all_sets = json.loads((WORK / "sets.json").read_text())
     for v in gens:
-        missing = [s for s in sets_for(v) if s != "kp_default" and s not in all_sets]
+        missing = [s for s in sets_for(v, sweep) if s != "kp_default" and s not in all_sets]
         if missing:
             raise SystemExit(f"sets missing from work/sets.json: {missing}")
     tl = tiles(region)
@@ -454,17 +509,19 @@ def run(region: str, gens: list[float], workers: int, threads: int, reverse: boo
     marks = d / "done"
     marks.mkdir(parents=True, exist_ok=True)
 
-    if revege:
-        marks = d / "done2"
+    if revege or sweep:
+        marks = d / ("done_sweep" if sweep else "done2")
         marks.mkdir(parents=True, exist_ok=True)
 
     def finished(t):
-        if revege:
-            return all((marks / f"{t}.{s}").exists() for s in sets_for(tl[t]))
+        if revege or sweep:
+            return all((marks / f"{t}.{s}").exists() for s in sets_for(tl[t], sweep))
         return (marks / f"{t}.base").exists() and all((marks / f"{t}.{s}").exists() for s in sets_for(tl[t]))
 
     order = sorted(tl, key=lambda t: (-int(t.split("_")[1]), int(t.split("_")[0])))
     queue = [t for t in order if tl[t] in gens and not finished(t)]
+    if limit:
+        queue = queue[:limit]
     fwd = list(queue)
     mine: set[str] = set()
     if reverse:
@@ -484,12 +541,37 @@ def run(region: str, gens: list[float], workers: int, threads: int, reverse: boo
     n_done = [0]
 
     def downloader():
-        for i, t in enumerate(queue):
-            while i - n_done[0] > 3 * workers + 4 or free_gb() < MIN_FREE_GB:
-                time.sleep(5)
-            with ThreadPoolExecutor(4) as ex:
-                list(ex.map(download, neighbours(t, known)))
-            ready[t].set()
+        # one pool for all files, so that it keeps DOWNLOADS connections busy across tiles (most of a
+        # tile's neighbours are already there); a tile is ready when all of its files are
+        futs: dict = {}
+        waiting: list = []
+
+        def watch():
+            for t, fs in _drain():
+                for f in fs:
+                    try:
+                        f.result()
+                    except Exception as e:  # the tile's batch run fails and reports it; a rerun picks it up
+                        print(f"{region} {t}: {e}", flush=True)
+                ready[t].set()
+
+        def _drain():
+            i = 0
+            while True:
+                while i >= len(waiting):
+                    time.sleep(1)
+                if waiting[i] is None:
+                    return
+                yield waiting[i]
+                i += 1
+
+        threading.Thread(target=watch, daemon=True).start()
+        with ThreadPoolExecutor(DOWNLOADS) as ex:
+            for i, t in enumerate(queue):
+                while i - n_done[0] > 3 * workers + 4 or free_gb() < MIN_FREE_GB:
+                    time.sleep(5)
+                waiting.append((t, [futs.setdefault(n, ex.submit(download, n)) for n in neighbours(t, known)]))
+            waiting.append(None)
 
     def cleanup():
         with lock:
@@ -512,7 +594,8 @@ def run(region: str, gens: list[float], workers: int, threads: int, reverse: boo
                 mine.add(t)
         t0 = time.time()
         try:
-            (revege_tile if revege else process_tile)(region, t, tl[t], known, all_sets, threads, crop)
+            fn = sweep_tile if sweep else revege_tile if revege else process_tile
+            fn(region, t, tl[t], known, all_sets, threads, crop)
         except Exception:  # report now, not when the pool is drained; a rerun picks the tile up
             import traceback
             print(f"{region} {t} FAILED\n{traceback.format_exc()}", flush=True)
@@ -562,7 +645,7 @@ def check(region: str, tile: str) -> None:
 # vector tiles
 
 
-def tile_pmtiles(region: str, jobs: int, only: str = "") -> None:
+def tile_pmtiles(region: str, jobs: int, only: str = "", sweep: bool = False) -> None:
     """One PMTiles archive per (generation, set) plus base; tippecanoe runs in parallel over parents."""
     import mercantile
 
@@ -574,7 +657,7 @@ def tile_pmtiles(region: str, jobs: int, only: str = "") -> None:
     for v, tag in ((1.4, "v14"), (1.2, "v12")):
         ts = [t for t in tl if tl[t] == v]
         if ts:
-            targets += [(f"{tag}_{s}", d / f"sets/{s}", ts) for s in sets_for(v)]
+            targets += [(f"{tag}_{s}", d / f"sets/{s}", ts) for s in sets_for(v, sweep)]
     if only:
         targets = [t for t in targets if t[0].startswith(only)]
     targets = [t for t in targets if not (out / f"{t[0]}.pmtiles").exists()]
@@ -634,17 +717,19 @@ def main() -> int:
     ap.add_argument("--reverse", action="store_true", help="helper pass from the end of the queue")
     ap.add_argument("--revege", action="store_true", help="redo the vegetation layers with kp's own crop")
     ap.add_argument("--only", default="", help="tile only the archives whose name starts with this")
+    ap.add_argument("--sweep", action="store_true", help="the sweep sets of sweep_sets.py (every tile)")
+    ap.add_argument("--limit", type=int, default=0, help="run: only the first N tiles of the queue (timing)")
     a = ap.parse_args()
     if a.cmd == "tiles":
         tl = tiles(a.region)
         print(len(tl), pd.Series(tl).value_counts().to_dict(),
               f"{density().loc[list(tl)].size_bytes.sum() / 1e9:.0f} GB laz")
     elif a.cmd == "run":
-        run(a.region, a.gen or [1.4, 1.2], a.workers, a.threads, a.reverse, a.revege)
+        run(a.region, a.gen or [1.4, 1.2], a.workers, a.threads, a.reverse, a.revege, a.sweep, a.limit)
     elif a.cmd == "check":
         check(a.region, a.tile)
     elif a.cmd == "tile":
-        tile_pmtiles(a.region, a.jobs, a.only)
+        tile_pmtiles(a.region, a.jobs, a.only, a.sweep)
     return 0
 
 

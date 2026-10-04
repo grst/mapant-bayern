@@ -42,7 +42,8 @@
 </head>
 <body>
 <div id="bar">
-  <strong>mapant-bayern parameter sets</strong>
+  <strong id="title">mapant-bayern parameter sets</strong>
+  <a id="overview" href="sets.html" style="display:none; color: var(--accent); font-weight: 600">parameter sets overview</a>
   <label>Area <select id="region"></select></label>
   <label>View <select id="mode"><option value="split">two maps side by side</option><option value="single">one map</option></select></label>
   <label><input type="checkbox" id="outline" checked> generation outline</label>
@@ -135,15 +136,25 @@ function applyPane(p) {
 
 function makeControls(p, defPreset) {
   const P = panes[p], ctl = document.getElementById('ctl' + p);
-  ctl.innerHTML = `<b>${p === 'A' ? 'Left' : 'Right'} map</b><span>preset</span><select></select><span>LAS 1.4 tiles</span><select></select><span>LAS 1.2 tiles</span><select></select>`;
+  ctl.innerHTML = `<b>${p === 'A' ? 'Left' : 'Right'} map</b><span>preset</span><select></select><span>${M.unified ? 'parameter set' : 'LAS 1.4 tiles'}</span><select></select><span>LAS 1.2 tiles</span><select></select>`;
   [P.preset, P.v14, P.v12] = ctl.querySelectorAll('select');
+  if (M.unified) {  // one set for LAS 1.2 and 1.4 tiles alike: the second select follows the first
+    P.v12.style.display = P.v12.previousElementSibling.style.display = 'none';
+    P.v14.addEventListener('change', () => { P.v12.value = P.v14.value; }, {capture: true});
+  }
   M.presets.forEach((x, i) => option(P.preset, String(i), x.label));
   option(P.preset, 'custom', '(custom pair)');
-  for (const s of M.gens.v14) if (M.sets[s]) option(P.v14, s, `${s} (${M.sets[s].label})`);
-  for (const s of M.gens.v12) if (M.sets[s]) option(P.v12, s, `${s} (${M.sets[s].label})`);
+  for (const [sel, g] of [[P.v14, 'v14'], [P.v12, 'v12']]) {
+    for (const s of M.gens[g]) if (M.sets[s]) { option(sel, s, `${s} (${M.sets[s].label})`); if (M.sets[s].title) sel.lastChild.title = M.sets[s].title; }
+  }
+  const tip = () => { for (const sel of [P.v14, P.v12]) sel.title = (M.sets[sel.value] || {}).title || ''; };
+  tip(); P.v14.addEventListener('change', tip); P.v12.addEventListener('change', tip);
   const saved = store.get('sel' + p, null), d = M.presets[defPreset] || M.presets[0];
   P.v14.value = saved && M.sets[saved.v14] ? saved.v14 : d.v14;
   P.v12.value = saved && M.sets[saved.v12] ? saved.v12 : d.v12;
+  if (M.unified) P.v12.value = P.v14.value;
+  const m = M.presets.findIndex(x => x.v14 === P.v14.value && x.v12 === P.v12.value);
+  P.preset.value = m >= 0 ? String(m) : 'custom';
   P.preset.onchange = () => { if (P.preset.value === 'custom') return; const x = M.presets[+P.preset.value]; P.v14.value = x.v14; P.v12.value = x.v12; applyPane(p); };
   P.v14.onchange = P.v12.onchange = () => applyPane(p);
 }
@@ -153,7 +164,8 @@ function renderParams() {
   const cols = [];
   for (const p of (document.body.classList.contains('single') ? ['A'] : ['A', 'B'])) {
     const s = paneSelection(p);
-    cols.push([`${p === 'A' ? 'left' : 'right'} 1.4`, s.v14], [`${p === 'A' ? 'left' : 'right'} 1.2`, s.v12]);
+    if (M.unified) cols.push([p === 'A' ? 'left' : 'right', s.v14]);
+    else cols.push([`${p === 'A' ? 'left' : 'right'} 1.4`, s.v14], [`${p === 'A' ? 'left' : 'right'} 1.2`, s.v12]);
   }
   const keys = [...new Set(cols.flatMap(([, s]) => Object.keys(M.sets[s].params)))].sort();
   let h = '<table><tr><th>parameter</th>' + cols.map(([t, s]) => `<th>${t}<br><span class="note">${s}</span></th>`).join('') + '</tr>';
@@ -204,6 +216,8 @@ async function loadRegion(name) {
 
 (async () => {
   M = await (await fetch('manifest.json')).json();
+  if (M.title) { document.getElementById('title').textContent = M.title; document.title = M.title; }
+  if (M.overview) { const a = document.getElementById('overview'); a.href = M.overview; a.style.display = ''; }
   const rs = document.getElementById('region');
   for (const r of Object.keys(M.regions)) option(rs, r, `${r} (${M.regions[r].tiles['LAS 1.2']} LAS 1.2 + ${M.regions[r].tiles['LAS 1.4']} LAS 1.4 km²)`);
   // a #zoom/lat/lon link opens the area it points into; otherwise the last one viewed
@@ -214,8 +228,12 @@ async function loadRegion(name) {
   const want = byHash || store.get('region', Object.keys(M.regions)[0]);
   rs.value = M.regions[want] ? want : Object.keys(M.regions)[0];
   const idx = l => Math.max(0, M.presets.findIndex(x => x.label === l));
-  makeControls('A', idx('round 2 balanced'));
-  makeControls('B', M.presets.findIndex(x => x.label.startsWith('round 3: balanced')) >= 0 ? idx('round 3: balanced + matched') : idx('kp default'));
+  if (M.defaults) {
+    makeControls('A', idx(M.defaults.A)); makeControls('B', idx(M.defaults.B));
+  } else {
+    makeControls('A', idx('round 2 balanced'));
+    makeControls('B', M.presets.findIndex(x => x.label.startsWith('round 3: balanced')) >= 0 ? idx('round 3: balanced + matched') : idx('kp default'));
+  }
   const mode = document.getElementById('mode');
   mode.value = store.get('mode', 'split');
   document.body.classList.toggle('single', mode.value === 'single');

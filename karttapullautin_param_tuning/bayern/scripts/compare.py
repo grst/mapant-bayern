@@ -3,6 +3,7 @@
 Build the comparison web app from region.py's vector tiles.
 
     compare.py build          # -> work/compare/ (index.html, data/, vendor/)
+    compare.py build --sweep  # -> work/compare_sweep/: the sweep of sweep_sets.py, with sets.html (overview)
     compare.py serve [port]   # serve it with HTTP range requests (PMTiles needs them)
 
 The app shows each area with any LAS 1.4 set on the LAS 1.4 tiles and any LAS 1.2 set on the LAS
@@ -26,6 +27,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import kp  # noqa: E402
 import region  # noqa: E402
+import sweep_sets  # noqa: E402
+from sweep_overview import overview_html  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = kp.WORK / "compare"
@@ -70,6 +73,14 @@ PRESETS = [
 ]
 
 
+SWEEP_PRESETS = [
+    ("production ini", "prod-las14", "prod-las14"),
+    ("B (production, vegesimplify 2.0)", "sw-vs2.0", "sw-vs2.0"),
+    ("kp default", "kp_default", "kp_default"),
+    *[(f"gradient {round(t * 100)} %", f"sw-grad{round(t * 100)}", f"sw-grad{round(t * 100)}") for t in sweep_sets.GRADIENT_T],
+]
+
+
 def outline(name: str) -> dict:
     """The LAS 1.2 / 1.4 tiles as dissolved polygons (WGS84) for the generation overlay."""
     import shapely
@@ -90,21 +101,30 @@ def outline(name: str) -> dict:
     return {"type": "FeatureCollection", "features": feats}
 
 
-def build() -> None:
+SWEEP_LABELS = {"kp_default": "karttapullautin default"}
+
+
+def build(sweep: bool = False) -> None:
     import make_viewer
     import mercantile
 
     sets = json.loads((kp.WORK / "sets.json").read_text())
+    OUT = kp.WORK / ("compare_sweep" if sweep else "compare")
+    sw = sweep_sets.sweep() if sweep else {}
+    gens = {"v14": ["kp_default", *sw], "v12": ["kp_default", *sw]} if sweep else {"v14": region.SETS[1.4], "v12": region.SETS[1.2]}
     OUT.mkdir(exist_ok=True)
     (OUT / "data").mkdir(exist_ok=True)
     manifest = {"regions": {}, "sets": {}, "presets": []}
-    for name in region.REGIONS:
+    for name in (["allgaeu"] if sweep else region.REGIONS):
         pm = kp.WORK / f"region/{name}/pmtiles"
         if not (pm / "base.pmtiles").exists():
             continue
         rd = OUT / f"data/{name}"
         rd.mkdir(exist_ok=True)
         files = sorted(p.name for p in pm.glob("*.pmtiles"))
+        if sweep:
+            files = [f for f in files if f == "base.pmtiles" or f.removesuffix(".pmtiles") in
+                     {f"{g}_{s}" for g in gens for s in gens[g]}]
         for f in files:
             if (rd / f).exists():
                 (rd / f).unlink()
@@ -129,29 +149,45 @@ def build() -> None:
         manifest["regions"][name] = dict(
             files=files, bounds=[w, s, e, n], start=START.get(name, [(w + e) / 2, (s + n) / 2, 13]),
             tiles={"LAS 1.2": sum(v == 1.2 for v in tl.values()), "LAS 1.4": sum(v == 1.4 for v in tl.values())})
-    used = {s for v in region.SETS.values() for s in v}
+    used = {s for v in gens.values() for s in v}
     for s in used:
         o = {} if s == "kp_default" else sets.get(s)
         if o is None:
             continue
         ini = kp.effective_ini(o)
-        manifest["sets"][s] = dict(label=LABELS.get(s, s), colors=make_viewer.ini_colors(ini),
-                                   params={k: v for k, v in o.items()})
-    manifest["presets"] = [dict(label=a, v14=b, v12=c) for a, b, c in PRESETS
+        if s in sw:
+            o = {k: v for k, v in o.items() if not k.startswith("cliff")}
+            manifest["sets"][s] = dict(label=sw[s]["label"], title=f"{sw[s]['change']}: {sw[s]['question']}",
+                                       colors=make_viewer.ini_colors(ini), params=dict(o))
+        else:
+            manifest["sets"][s] = dict(label=SWEEP_LABELS.get(s, s) if sweep else LABELS.get(s, s),
+                                       colors=make_viewer.ini_colors(ini), params={k: v for k, v in o.items()})
+    presets = SWEEP_PRESETS if sweep else PRESETS
+    manifest["presets"] = [dict(label=a, v14=b, v12=c) for a, b, c in presets
                            if b in manifest["sets"] and c in manifest["sets"]]
-    manifest["gens"] = {"v14": region.SETS[1.4], "v12": region.SETS[1.2]}
+    manifest["gens"] = gens
+    if sweep:
+        manifest["title"] = "mapant-bayern: sweep around the production ini"
+        manifest["unified"] = True  # one set per map on LAS 1.2 and 1.4 tiles alike
+        manifest["overview"] = "sets.html"
+        manifest["defaults"] = {"A": "production ini", "B": "gradient 50 %"}
+        (OUT / "sets.html").write_text(overview_html(sw))
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1))
     shutil.copy(APP, OUT / "index.html")
+    if not (OUT / "vendor").exists():
+        shutil.copytree(kp.WORK / "compare/vendor", OUT / "vendor")
     shutil.copy(Path(__file__).with_name("compare_serve.py"), OUT / "serve.py")
     print(f"{OUT}: {', '.join(manifest['regions'])}; {len(manifest['sets'])} sets")
 
 
 def main() -> int:
     if sys.argv[1] == "build":
-        build()
+        build("--sweep" in sys.argv)
     elif sys.argv[1] == "serve":
         import compare_serve
-        compare_serve.serve(OUT, int(sys.argv[2]) if len(sys.argv) > 2 else 8765)
+        out = kp.WORK / "compare_sweep" if "--sweep" in sys.argv else OUT
+        port = [a for a in sys.argv[2:] if a.isdigit()]
+        compare_serve.serve(out, int(port[0]) if port else 8765)
     return 0
 
 
