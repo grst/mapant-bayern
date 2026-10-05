@@ -19,7 +19,7 @@ data, and how the tile indices were built, is in
 | --- | --- | --- | --- | --- | --- |
 | Bayern | **mapant rendered** | CC BY 4.0 | `.laz` per 1 km tile | 71,979 | [`bayern/`](bayern/) |
 | Rheinland-Pfalz | free | dl-de/by-2-0 | `.laz` per 1 km tile | 21,207 | [`rheinland-pfalz/`](rheinland-pfalz/) |
-| Nordrhein-Westfalen | free | dl-de/zero-2-0 | `.laz` per 1 km tile, no checksum | 35,860 | [`nordrhein-westfalen/`](nordrhein-westfalen/) |
+| Nordrhein-Westfalen | **mapant rendered** | dl-de/zero-2-0 | `.laz` per 1 km tile, no checksum | 35,860 | [`nordrhein-westfalen/`](nordrhein-westfalen/) |
 | Brandenburg | free | dl-de/by-2-0 | `.zip` per 1 km tile, no checksum | 13,086 | [`brandenburg/`](brandenburg/) |
 | Sachsen | free | dl-de/by-2-0 | `.zip` per 2 km tile, partly SHA-1 | 4,981 | [`sachsen/`](sachsen/) |
 | Thüringen | free | dl-de/by-2-0 | `.zip` per 1 km tile (2014-2019), no checksum | 17,127 | [`thueringen/`](thueringen/) |

@@ -6,4 +6,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 nextflow run grst/mapant-nf -r "${MAPANT_NF_REVISION:-1619f9c336eed4cd87fc328b554da314461cf610}" \
-    -params-file conf/production.yml -profile docker -c ../bayern/conf/c8id.32xlarge.config -resume
+    -params-file conf/production.yml -profile docker -c conf/c8id.8xlarge.config -resume

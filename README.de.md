@@ -25,8 +25,8 @@ Wenn du eine andere Lizenz benötigst, [melde dich gerne](mailto:gregor@sturmclo
 ## Datenquellen
 
  * Geodaten Bayern LIDAR (© Bayerische Vermessungsverwaltung ([CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.de)))
- * Testregionen: LiDAR von Rheinland-Pfalz (© GeoBasis-DE / LVermGeoRP), Nordrhein-Westfalen (© Geobasis NRW,
-   [dl-de/zero-2-0](https://www.govdata.de/dl-de/zero-2-0)), Brandenburg (© GeoBasis-DE/LGB) und Sachsen (© GeoSN),
-   alle anderen [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0)
+ * Nordrhein-Westfalen LiDAR (© Geobasis NRW ([dl-de/zero-2-0](https://www.govdata.de/dl-de/zero-2-0)))
+ * Testregionen: LiDAR von Rheinland-Pfalz (© GeoBasis-DE / LVermGeoRP), Brandenburg (© GeoBasis-DE/LGB) und Sachsen
+   (© GeoSN), alle [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0)
  * Grenzen der Bundesländer von [Natural Earth](https://www.naturalearthdata.com/) (gemeinfrei)
  * OpenStreetMap von [geofabrik.de](https://download.geofabrik.de/europe/germany.html) (© OpenStreetMap contributors ([ODbL 1.0](http://opendatacommons.org/licenses/odbl/)))

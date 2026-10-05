@@ -43,7 +43,7 @@ export const STATES: FederalState[] = [
     name: 'Bayern',
     status: 'rendered',
     crs: 'EPSG:25832',
-    archive: 'mapant.pmtiles',
+    archive: 'mapant-bayern.pmtiles',
     attribution:
       `© ${link('https://geodaten.bayern.de/opengeodata/', 'Bayerische Vermessungsverwaltung')} ` +
       `(${link('https://creativecommons.org/licenses/by/4.0/', 'CC-BY-4.0')})`,
@@ -59,9 +59,9 @@ export const STATES: FederalState[] = [
   {
     id: 'DE-NW',
     name: 'Nordrhein-Westfalen',
-    status: 'free',
+    status: 'rendered',
     crs: 'EPSG:25832',
-    archive: 'nordrhein-westfalen.pmtiles',
+    archive: 'mapant-nrw.pmtiles',
     attribution: `© ${link('https://www.bezreg-koeln.nrw.de/geobasis-nrw', 'Geobasis NRW')} (${DL_DE_ZERO})`,
   },
   {

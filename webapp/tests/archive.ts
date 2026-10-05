@@ -10,10 +10,10 @@ import type {Page} from '@playwright/test';
 export const FIXTURE_ARCHIVE = join(import.meta.dirname, 'fixtures', 'mapant.pmtiles');
 
 /** Bavaria's archive in the built app (MAPANT_TILES_BASE and states.ts). */
-export const ARCHIVE_URL = /pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev\/mapant\.pmtiles/;
+export const ARCHIVE_URL = /mapant-tiles\.orienteering-allgaeu\.de\/mapant-bayern\.pmtiles/;
 
 /** Every other archive in the bucket: the other states'. */
-const OTHER_ARCHIVES = /pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev\/(?!mapant\.pmtiles)[^/]+\.pmtiles/;
+const OTHER_ARCHIVES = /mapant-tiles\.orienteering-allgaeu\.de\/(?!mapant-bayern\.pmtiles)[^/]+\.pmtiles/;
 
 /**
  * Answers the app's range requests for the archive from the fixture, as a static host does: a

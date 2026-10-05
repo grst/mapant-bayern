@@ -74,7 +74,7 @@ ask for one; the export gives the print map another frame while it waits, or it 
 ## The orienteering map
 
 The map is drawn from the PMTiles archives mapant-nf publishes (`map/mapant.pmtiles`), one per
-federal state, read with HTTP range requests from an R2 bucket (`MAPANT_TILES_BASE` in
+federal state, read with HTTP range requests from an R2 bucket served at `mapant-tiles.orienteering-allgaeu.de` (`MAPANT_TILES_BASE` in
 `src/archive.ts`, each state's file name in `src/states.ts`), in the ISOM 2017-2 style of
 [isom-maplibre](https://github.com/MetsaApp/isom-maplibre).
 
@@ -132,7 +132,8 @@ federal state, read with HTTP range requests from an R2 bucket (`MAPANT_TILES_BA
   each state's archive is read from there if it is there, and from the bucket otherwise. Vite's dev
   server answers range requests. The bucket's CORS rules admit `localhost:5173` and `:4173` only.
 * `VITE_MAPANT_TILES` replaces the bucket altogether, for a build pointed at another host.
-* A new state's archive goes into the bucket as `<state>.pmtiles`, the name in `src/states.ts`.
+* A new state's archive goes into the bucket under the name in `src/states.ts` (`mapant-bayern.pmtiles`,
+  `mapant-nrw.pmtiles`, ...).
 
 ## OCAD export
 

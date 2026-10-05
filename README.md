@@ -26,8 +26,8 @@ If you need a different license, feel free to [reach out](mailto:gregor@sturmclo
 ## Data sources
 
  * Geodaten Bayern LIDAR (© Bayerische Vermessungsverwaltung ([CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.en)))
- * Test regions: LiDAR of Rheinland-Pfalz (© GeoBasis-DE / LVermGeoRP), Nordrhein-Westfalen (© Geobasis NRW,
-   [dl-de/zero-2-0](https://www.govdata.de/dl-de/zero-2-0)), Brandenburg (© GeoBasis-DE/LGB) and Sachsen (© GeoSN),
-   all others [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0)
+ * Nordrhein-Westfalen LiDAR (© Geobasis NRW ([dl-de/zero-2-0](https://www.govdata.de/dl-de/zero-2-0)))
+ * Test regions: LiDAR of Rheinland-Pfalz (© GeoBasis-DE / LVermGeoRP), Brandenburg (© GeoBasis-DE/LGB) and Sachsen
+   (© GeoSN), all [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0)
  * Federal state boundaries from [Natural Earth](https://www.naturalearthdata.com/) (public domain)
  * OpenStreetMap obtained from [geofabrik.de](https://download.geofabrik.de/europe/germany.html) (© OpenStreetMap contributors ([ODbL 1.0](http://opendatacommons.org/licenses/odbl/)))

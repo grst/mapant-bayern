@@ -14,7 +14,8 @@ find public/tiles -maxdepth 1 -name '*.pmtiles' -type l -delete
 for dir in "$pipeline"/*/; do
     state="$(basename "$dir")"
     case "$state" in
-        bayern) [ "${1:-}" = --no-bayern ] && continue; name=mapant.pmtiles ;;
+        bayern) [ "${1:-}" = --no-bayern ] && continue; name=mapant-bayern.pmtiles ;;
+        nordrhein-westfalen) name=mapant-nrw.pmtiles ;;
         common|docs) continue ;;
         *) name="${state}.pmtiles" ;;
     esac

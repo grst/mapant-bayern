@@ -24,7 +24,7 @@ import {mergeTiles} from './tilemerge';
  * (`VITE_MAPANT_TILES=/tiles/ npm run dev` with the files in `public/tiles/`).
  */
 export const MAPANT_TILES_BASE: string =
-  import.meta.env.VITE_MAPANT_TILES ?? 'https://pub-77421d3fb5d34fc09d670e81f6c2dadf.r2.dev/';
+  import.meta.env.VITE_MAPANT_TILES ?? 'https://mapant-tiles.orienteering-allgaeu.de/';
 
 /**
  * For local testing: archives looked for here first, each falling back to MAPANT_TILES_BASE where
