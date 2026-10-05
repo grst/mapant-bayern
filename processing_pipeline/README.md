@@ -11,7 +11,9 @@ karttapullautin params based on real orienteering maps from omaps.me that exist 
 Which of the 16 states publish an airborne laserscanning point cloud, and whether it can be
 fetched tile by tile -- which is what mapant-nf needs. The status follows Jens Wiesehahn's
 [LiDAR availability overview](https://wiesehahn.github.io/posts/lidar_availability/) (updated
-2026-03), and so does the webapp's shading (`webapp/src/states.ts`). How each state delivers its
+2026-03), except for Hessen, which only sells its point cloud; the webapp's shading
+(`webapp/src/states.ts`) follows the same, and shows Sachsen-Anhalt as fee-based since only
+the Halle region is free. How each state delivers its
 data, and how the tile indices were built, is in
 [`docs/lidar_open_data_germany.md`](docs/lidar_open_data_germany.md) (surveyed 2026-08).
 
@@ -24,20 +26,20 @@ data, and how the tile indices were built, is in
 | Sachsen | free | dl-de/by-2-0 | `.zip` per 2 km tile, partly SHA-1 | 4,981 | [`sachsen/`](sachsen/) |
 | Thüringen | free | dl-de/by-2-0 | `.zip` per 1 km tile (2014-2019), no checksum | 17,127 | [`thueringen/`](thueringen/) |
 | Berlin | free | dl-de/by-2-0 | 8 regional `.zip` of 1-37 GB | -- | not per tile |
-| Hessen | free | dl-de/by-2-0 | through the Geodaten-online shop, by area | -- | not per tile |
 | Saarland | free, thinned to 4 pts/m² | dl-de/by-2-0 | download portal, by area | -- | not per tile |
-| Sachsen-Anhalt | free, Halle region only | dl-de/by-2-0 | one packed dataset | -- | not statewide |
+| Sachsen-Anhalt | free for the Halle region only, elsewhere against a fee | dl-de/by-2-0 | one packed dataset | -- | not statewide |
 | Baden-Württemberg | against a fee (3-80 €/km²) | | | | |
 | Niedersachsen | against a fee (3.75-30 €/km²) | | | | |
 | Mecklenburg-Vorpommern | against a fee (10-80 €/km²) | | | | |
 | Bremen | against a fee (80 €/km²) | | | | |
+| Hessen | against a fee, through the Geodaten-online shop | | | | |
 | Hamburg | not available | | | | |
 | Schleswig-Holstein | not available | | | | |
 
 A state gets a folder here when its point cloud is free **and** can be downloaded per tile. Berlin
 would need its bundles unpacked to local storage first; that is deliberately not done here.
-Hessen and Saarland hand out their free point clouds by area through their portals, which a tiles
-CSV cannot point at.
+Saarland hands out its free point cloud by area through its portal, which a tiles CSV cannot
+point at.
 
 ## One folder per state
 

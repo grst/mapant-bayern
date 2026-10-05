@@ -82,15 +82,15 @@ export const STATES: FederalState[] = [
   },
   {id: 'DE-TH', name: 'Thüringen', status: 'free', crs: 'EPSG:25832'},
   {id: 'DE-BE', name: 'Berlin', status: 'free', crs: 'EPSG:25833'},
-  {id: 'DE-HE', name: 'Hessen', status: 'free', crs: 'EPSG:25832'},
   // Thinned to 4 points/m².
   {id: 'DE-SL', name: 'Saarland', status: 'free', crs: 'EPSG:25832'},
-  // So far only the Halle region.
-  {id: 'DE-ST', name: 'Sachsen-Anhalt', status: 'free', crs: 'EPSG:25832'},
   {id: 'DE-BW', name: 'Baden-Württemberg', status: 'fee', crs: 'EPSG:25832'},
   {id: 'DE-NI', name: 'Niedersachsen', status: 'fee', crs: 'EPSG:25832'},
   {id: 'DE-MV', name: 'Mecklenburg-Vorpommern', status: 'fee', crs: 'EPSG:25833'},
   {id: 'DE-HB', name: 'Bremen', status: 'fee', crs: 'EPSG:25832'},
+  {id: 'DE-HE', name: 'Hessen', status: 'fee', crs: 'EPSG:25832'},
+  // Free for the Halle region only; the rest of the state against a fee.
+  {id: 'DE-ST', name: 'Sachsen-Anhalt', status: 'fee', crs: 'EPSG:25832'},
   {id: 'DE-HH', name: 'Hamburg', status: 'none', crs: 'EPSG:25832'},
   {id: 'DE-SH', name: 'Schleswig-Holstein', status: 'none', crs: 'EPSG:25832'},
 ];

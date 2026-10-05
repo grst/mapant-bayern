@@ -13,9 +13,11 @@ snapshot: several states moved on this in the last three years and more will.
 > Sachsen and Thüringen each have a folder next to `bayern/`. And where the
 > verdicts below disagree with
 > [Jens Wiesehahn's overview](https://wiesehahn.github.io/posts/lidar_availability/)
-> (updated 2026-03), the overview is correct: Hessen and Saarland publish their
-> point clouds as open data, and Baden-Württemberg, Niedersachsen and Bremen
-> sell theirs. `../README.md` and the webapp's state shading follow it.
+> (updated 2026-03), the overview is correct: Saarland publishes its point
+> cloud as open data, and Baden-Württemberg, Niedersachsen and Bremen sell
+> theirs. Hessen is the exception: the overview lists it as open data, but the
+> verdict below stands -- the point cloud is only sold through the shop.
+> `../README.md` and the webapp's state shading follow this.
 
 Only the raw/classified **point cloud** counts here. Almost every state now
 publishes DGM1/DOM1/bDOM raster elevation models as OpenData; karttapullautin
