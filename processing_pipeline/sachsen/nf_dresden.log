@@ -1,0 +1,61 @@
+Input and output
+  tiles_csv          : input/laz_tiles.csv
+  osm_pbf            : input/sachsen-latest.osm.pbf
+  pullauta_ini       : ../bayern/conf/pullauta.bayern.ini
+  vectorconf         : ../bayern/conf/osm.txt
+  outdir             : results_dresden
+  publish_mode       : link
+  map_title          : mapant test -- Dresden and the Elbsandstein
+  attribution        : LiDAR &copy; <a href="https://www.geodaten.sachsen.de">GeoSN</a>, dl-de/by-2-0
+
+Region filter
+  region_bbox        : 13.5231540,50.9139128,14.0084858,51.1798724
+
+Grids and rendering
+  grid_size          : 6
+  pullauta_processes : 4
+
+Download
+  download_jobs      : 8
+  download_limit_rate: 200M
+
+OpenStreetMap processing
+  osm_chunk_size     : 4
+
+Core Nextflow options
+  runName            : intergalactic_engelbart
+  containerEngine    : podman
+  launchDir          : /workspace/mapant-bayern/processing_pipeline/sachsen
+  workDir            : /workspace/mapant-bayern/processing_pipeline/sachsen/work
+  projectDir         : /workspace/mapant-nf
+  userName           : vscode
+  profile            : podman
+  configFiles        : /workspace/mapant-nf/nextflow.config, /tmp/claude-1000/-workspace/e00fa468-2810-490b-a43d-b06058ff4c84/scratchpad/devcontainer.config
+
+!! Only displaying parameters that differ from the pipeline defaults !!
+------------------------------------------------------[WARN] WARN: Found the following unidentified headers in /workspace/mapant-bayern/processing_pipeline/sachsen/input/laz_tiles.csv: - min_lon - min_lat - max_lon - max_lat - units - inner_laz
+Validated 4981 tile(s) against assets/schema_tiles.json[PIPELINE] mapant 0.1.0 | profile=podman
+[WORKDIR] /workspace/mapant-bayern/processing_pipeline/sachsen/work
+[PROCESS 6c/40fcb2] PLAN_GRIDS (1)
+[PROCESS a0/8a3d77] OSM_EXTRACT (chunk_00002)
+[PROCESS bc/a284e7] RENDER_INI (pullauta_bayern)
+[PROCESS 95/3910c3] MAKE_VIEWER (1)
+[PROCESS 49/8e2351] OSM_EXTRACT (chunk_00001)
+[PROCESS c3/06c44a] OSM_TO_SHAPES (grid_25833_35_470_pullauta_bayern)
+[PROCESS b3/086856] OSM_TO_SHAPES (grid_25833_35_471_pullauta_bayern)
+[PROCESS 77/de0b20] OSM_TO_SHAPES (grid_25833_34_472_pullauta_bayern)
+[PROCESS 06/ad398d] OSM_TO_SHAPES (grid_25833_34_471_pullauta_bayern)
+[PROCESS 8e/6beacc] OSM_EXTRACT (chunk_00003)
+[PROCESS 00/ab3ef2] OSM_TO_SHAPES (grid_25833_33_470_pullauta_bayern)
+[PROCESS b4/efd334] OSM_TO_SHAPES (grid_25833_34_470_pullauta_bayern)
+[PROCESS 8b/989b1e] PULLAUTA_GRID (grid_25833_34_472_pullauta_bayern)
+[PROCESS 5c/7a8f1d] OSM_TO_SHAPES (grid_25833_33_471_pullauta_bayern)
+[PROCESS 33/57bf6f] OSM_TO_SHAPES (grid_25833_33_472_pullauta_bayern)
+[PROCESS ff/246f45] OSM_TO_SHAPES (grid_25833_35_472_pullauta_bayern)
+[PROCESS b1/0820be] PULLAUTA_GRID (grid_25833_35_471_pullauta_bayern)
+[PROCESS cc/88b7a5] PULLAUTA_GRID (grid_25833_35_470_pullauta_bayern)
+[PROCESS b4/dbbb1b] PULLAUTA_GRID (grid_25833_33_470_pullauta_bayern)
+[PROCESS 85/1cab4b] MAKE_VECTOR_TILES (11/1103/685)
+[PROCESS 7c/90009e] MAKE_VECTOR_TILES (11/1103/686)
+[PROCESS f5/3753aa] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+[PROCESS 7e/af0233] MAKE_VECTOR_TILES (11/1100/686)

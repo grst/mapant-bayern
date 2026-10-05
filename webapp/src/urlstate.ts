@@ -12,8 +12,8 @@ export const LAYER_CODES: LayerCode[] = ['h', 'l', 'g'];
  */
 const LINK_ZOOM_OFFSET = 1;
 
-/** Immenstadt im Allgäu, at the first zoom level the orienteering map covers (map zoom). */
-export const DEFAULT_VIEW = {zoom: 11, lat: 47.5635, lon: 10.2142};
+/** All of Germany (map zoom), with the shading that says which states are mapped. */
+export const DEFAULT_VIEW = {zoom: 5.5, lat: 51.16, lon: 10.45};
 const DEFAULT_LAYERS: LayerCode[] = ['l'];
 
 /** Browsers cope with far more, but a link this long is no longer shareable in practice. */

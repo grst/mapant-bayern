@@ -1,6 +1,6 @@
 export const en = {
-  'title.map': 'Mapant Bayern – automatically generated orienteering map',
-  'title.about': 'About – Mapant Bayern',
+  'title.map': 'Mapant Germany – automatically generated orienteering map',
+  'title.about': 'About – Mapant Germany',
 
   'nav.menu': 'Menu',
   'nav.close': 'Close menu',
@@ -11,6 +11,11 @@ export const en = {
   'nav.language': 'Language',
 
   'hint.zoomIn': 'Zoom in to view the orienteering map',
+
+  'status.rendered': 'Mapant rendered',
+  'status.free': 'LiDAR freely available',
+  'status.fee': 'LiDAR against a fee',
+  'status.none': 'No LiDAR available',
 
   'layers.title': 'Layers',
   'layers.toggle': 'Layers',

@@ -9,13 +9,15 @@ import {
   attributionText,
   createStyle,
   MAP_MIN_ZOOM,
+  STATE_LABEL_LAYER,
+  stateLabelText,
   type OptionalLayer,
   type Visibility,
 } from './layers';
 import {createMap, domControl} from './map';
 import {exportPdf} from './print';
 import {archiveSource, exportOcd} from './ocd';
-import {MAP_CRS, OCD_TEMPLATE_URL} from './ocd/config';
+import {OCD_TEMPLATE_URL} from './ocd/config';
 import {gridZoneFor} from './ocd/proj';
 import {readState, writeState, type AppState, type LayerCode} from './urlstate';
 import {createDrawToolbar} from './ui/drawtoolbar';
@@ -26,6 +28,7 @@ import {createPrintPanel, type PrintSettings} from './ui/printpanel';
 import {createPrintPreview} from './ui/printpreview';
 import {createShareControl} from './ui/share';
 import {showToast} from './ui/toast';
+import {crsAt} from './states';
 
 /** The layers the share link can switch, by their code in it. */
 const LAYER_BY_CODE: Record<LayerCode, OptionalLayer> = {h: 'hillshade', l: 'places', g: 'grid'};
@@ -112,13 +115,15 @@ map.addControl(
           if (!response.ok) {
             throw new Error(`${OCD_TEMPLATE_URL}: ${response.status}`);
           }
+          const {lng, lat} = map.getCenter();
+          const crs = await crsAt([lng, lat]);
           const result = await exportOcd({
             ...settings,
             center: viewCenter(),
             source: archiveSource(),
             template: await response.arrayBuffer(),
-            crs: MAP_CRS,
-            gridZone: gridZoneFor(MAP_CRS),
+            crs,
+            gridZone: gridZoneFor(crs),
           });
           if (result.objects === 0) {
             showToast(t('print.ocdEmpty'), 4000);
@@ -132,7 +137,7 @@ map.addControl(
           if (result.unreadable > 0) {
             console.warn(`OCD export: ${result.unreadable} tile(s) were not readable as vector tiles`);
           }
-          saveFile(result.file, `mapant-bayern_1-${settings.scale}.ocd`);
+          saveFile(result.file, `mapant-germany_1-${settings.scale}.ocd`);
           showToast(t('print.ocdReady'));
         } catch (error) {
           console.error('OCD export failed', error);
@@ -149,8 +154,13 @@ map.addControl(
             style: createStyle({visible, print: true, drawings, drawingLabels: labels}),
             showTileBoundaries: visible.grid,
             // The notices of what is on the page, which is at the orienteering map's zooms.
-            attribution: attributionText(MAP_MIN_ZOOM, visible),
-            fileName: `mapant-bayern_1-${settings.scale}.pdf`,
+            attribution: attributionText(
+              MAP_MIN_ZOOM,
+              visible,
+              map.getBounds().toArray().flat() as [number, number, number, number],
+              {basemap: false},
+            ),
+            fileName: `mapant-germany_1-${settings.scale}.pdf`,
           });
           showToast(t('print.ready'));
         } catch (error) {
@@ -173,6 +183,9 @@ map.on('moveend', save);
 tools.onChange(save);
 onLangChange(() => {
   tools.refresh();
+  if (map.getLayer(STATE_LABEL_LAYER)) {
+    map.setLayoutProperty(STATE_LABEL_LAYER, 'text-field', stateLabelText());
+  }
   save();
 });
 

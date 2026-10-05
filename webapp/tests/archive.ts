@@ -9,8 +9,11 @@ import type {Page} from '@playwright/test';
  */
 export const FIXTURE_ARCHIVE = join(import.meta.dirname, 'fixtures', 'mapant.pmtiles');
 
-/** The archive's URL in the built app (MAPANT_PMTILES_URL in src/archive.ts). */
+/** Bavaria's archive in the built app (MAPANT_TILES_BASE and states.ts). */
 export const ARCHIVE_URL = /pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev\/mapant\.pmtiles/;
+
+/** Every other archive in the bucket: the other states'. */
+const OTHER_ARCHIVES = /pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev\/(?!mapant\.pmtiles)[^/]+\.pmtiles/;
 
 /**
  * Answers the app's range requests for the archive from the fixture, as a static host does: a
@@ -18,6 +21,8 @@ export const ARCHIVE_URL = /pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev\/mapan
  */
 export async function serveArchive(page: Page, file = FIXTURE_ARCHIVE): Promise<void> {
   const bytes = readFileSync(file);
+  // The other states' archives, as if not uploaded yet: the app leaves them out.
+  await page.route(OTHER_ARCHIVES, (route) => route.fulfill({status: 404, body: ''}));
   await page.route(ARCHIVE_URL, (route) => {
     const range = /bytes=(\d+)-(\d*)/.exec(route.request().headers()['range'] ?? '');
     const start = range ? Number(range[1]) : 0;

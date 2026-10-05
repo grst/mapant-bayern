@@ -2,8 +2,8 @@
   --bg: #ffffff;
   --fg: #1b1b1b;
   --muted: #5a5a5a;
-  /* Bavarian blue, RAL 5015. White on it reaches 5:1, so it also serves as the
-     link colour on white. */
+  /* RAL 5015 sky blue. White on it reaches 5:1, so it also serves as the link
+     colour on white. */
   --accent: #3172ad;
   --accent-fg: #ffffff;
   --border: #d6d6d6;

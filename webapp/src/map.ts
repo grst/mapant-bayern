@@ -87,7 +87,7 @@ export function createMap(
   const attributionTarget = document.getElementById('attribution');
   let shownAttribution = '';
   const updateAttribution = () => {
-    const html = `<ul>${attributions(map.getZoom(), visible)
+    const html = `<ul>${attributions(map.getZoom(), visible, map.getBounds().toArray().flat() as [number, number, number, number])
       .map((notice) => `<li>${notice}</li>`)
       .join('')}</ul>`;
     if (attributionTarget && html !== shownAttribution) {
@@ -95,6 +95,7 @@ export function createMap(
       shownAttribution = html;
     }
   };
+  map.on('moveend', updateAttribution);
   map.on('zoom', updateAttribution);
   updateAttribution();
 

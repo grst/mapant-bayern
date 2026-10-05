@@ -1,0 +1,33 @@
+# A production-scale test region: Koblenz, Rhein and Mosel, from 50.432771 N 7.524483 E to
+# 50.224243 N 7.760848 E, given in lon/lat. Everything else is the production run's
+# (conf/production.yml), so this exercises the full pipeline at production settings.
+
+tiles_csv: input/laz_tiles.csv
+osm_pbf: input/rheinland-pfalz-latest.osm.pbf
+
+region_bbox: '7.5244830,50.2242433,7.7608484,50.4327710'
+region_bbox_crs: lonlat
+
+# The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
+# state has had a parameter sweep of its own.
+pullauta_ini: ../bayern/conf/pullauta.bayern.ini
+vectorconf: ../bayern/conf/osm.txt
+
+download_jobs: 8
+download_limit_rate: '200M'
+
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+grid_size: 16
+pullauta_processes: 16
+
+osm_chunk_size: 4
+
+attribution: 'LiDAR &copy; <a href="https://lvermgeo.rlp.de">GeoBasis-DE / LVermGeoRP</a>, dl-de/by-2-0'
+publish_mode: link
+
+map_title: 'mapant test -- Koblenz, Rhein and Mosel'
+outdir: results_koblenz

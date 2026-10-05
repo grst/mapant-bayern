@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "fetch-places": "node scripts/fetch-places.mjs",
-    "fetch-basemap": "node scripts/fetch-basemap.mjs"
+    "fetch-basemap": "node scripts/fetch-basemap.mjs",
+    "dev:local": "scripts/link-local-tiles.sh && VITE_MAPANT_LOCAL_TILES=/tiles/ vite"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",

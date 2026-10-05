@@ -1,0 +1,85 @@
+Input and output
+  tiles_csv          : input/laz_tiles.csv
+  osm_pbf            : input/nordrhein-westfalen-latest.osm.pbf
+  pullauta_ini       : ../bayern/conf/pullauta.bayern.ini
+  vectorconf         : ../bayern/conf/osm.txt
+  outdir             : results_teutoburger_wald
+  publish_mode       : link
+  map_title          : mapant test -- Teutoburger Wald
+  attribution        : LiDAR &copy; <a href="https://www.bezreg-koeln.nrw.de/geobasis-nrw">Geobasis NRW</a>, dl-de/zero-2-0
+
+Region filter
+  region_bbox        : 8.6506288,51.8287517,8.9846243,51.9524294
+
+Grids and rendering
+  grid_size          : 16
+
+Download
+  download_jobs      : 8
+  download_limit_rate: 200M
+
+OpenStreetMap processing
+  osm_chunk_size     : 4
+
+Core Nextflow options
+  runName            : awesome_wilson
+  containerEngine    : podman
+  launchDir          : /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen
+  workDir            : /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/work
+  projectDir         : /workspace/mapant-nf
+  userName           : vscode
+  profile            : podman
+  configFiles        : /workspace/mapant-nf/nextflow.config, /tmp/claude-1000/-workspace/e00fa468-2810-490b-a43d-b06058ff4c84/scratchpad/devcontainer.config
+
+!! Only displaying parameters that differ from the pipeline defaults !!
+------------------------------------------------------[WARN] WARN: Found the following unidentified headers in /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/input/laz_tiles.csv: - min_lon - min_lat - max_lon - max_lat - units
+Validated 35860 tile(s) against assets/schema_tiles.json[PIPELINE] mapant 0.1.0 | profile=podman
+[WORKDIR] /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/work
+[PROCESS 36/7e62be] PULLAUTA_GRID (grid_25832_31_358_pullauta_bayern)
+[PROCESS d1/843abb] PULLAUTA_GRID (grid_25832_30_358_pullauta_bayern)
+[PROCESS 19/bf811e] MAKE_VECTOR_TILES (11/1075/678)
+[PROCESS a2/01ff03] PULLAUTA_GRID (grid_25832_29_359_pullauta_bayern)
+[PROCESS 57/a8531b] MAKE_VECTOR_TILES (11/1074/678)
+[PROCESS 91/e5519a] PULLAUTA_GRID (grid_25832_31_359_pullauta_bayern)
+[PROCESS ea/933767] PULLAUTA_GRID (grid_25832_29_358_pullauta_bayern)
+[PROCESS c7/e5b20f] MAKE_VECTOR_TILES (11/1075/676)
+[PROCESS 03/86dd07] MAKE_VECTOR_TILES (11/1075/677)
+[PROCESS ff/b5b8e3] PULLAUTA_GRID (grid_25832_30_359_pullauta_bayern)
+[PROCESS bb/525569] MAKE_VECTOR_TILES (11/1073/678)
+[PROCESS cf/e2c4e2] MAKE_VECTOR_TILES (11/1074/677)
+[PROCESS 36/128b29] MAKE_VECTOR_TILES (11/1073/676)
+[PROCESS 4f/d3706d] MAKE_VECTOR_TILES (11/1073/677)
+[PROCESS bc/29a990] MAKE_VECTOR_TILES (11/1074/676)
+[PROCESS b1/964686] MERGE_PMTILES (1)
+
+Outputs:
+
+  /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/results_teutoburger_wald
+
+  map:
+    - map/index.html
+    - map/sprite.json
+    - map/sprite.png
+    - map/sprite@2x.json
+    - map/sprite@2x.png
+    - map/style.json
+    - map/mapant.pmtiles
+
+  qc:
+    - qc/pullauta.grid_25832_31_358_pullauta_bayern.log
+    - qc/pullauta.grid_25832_30_358_pullauta_bayern.log
+    - qc/pullauta.grid_25832_29_359_pullauta_bayern.log
+    - qc/pullauta.grid_25832_31_359_pullauta_bayern.log
+    - qc/pullauta.grid_25832_29_358_pullauta_bayern.log
+    - qc/pullauta.grid_25832_30_359_pullauta_bayern.log
+    - qc/pullauta_failures.tsv
+    - qc/download_failures.tsv
+
+  plan:
+    - pipeline_info/parent_tiles.csv
+    - pipeline_info/inis.csv
+    - pipeline_info/grids.csv
+    - pipeline_info/plan_summary.txt
+    - pipeline_info/effective.pullauta_bayern.ini
+
+[SUCCESS] completed=16 failed=0 cached=11

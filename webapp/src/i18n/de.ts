@@ -1,8 +1,8 @@
 import type {Key} from './en';
 
 export const de: Record<Key, string> = {
-  'title.map': 'Mapant Bayern – automatisch generierte Orientierungslaufkarte',
-  'title.about': 'Über – Mapant Bayern',
+  'title.map': 'Mapant Germany – automatisch generierte Orientierungslaufkarte',
+  'title.about': 'Über – Mapant Germany',
 
   'nav.menu': 'Menü',
   'nav.close': 'Menü schließen',
@@ -13,6 +13,11 @@ export const de: Record<Key, string> = {
   'nav.language': 'Sprache',
 
   'hint.zoomIn': 'Hineinzoomen, um die Orientierungslaufkarte zu sehen',
+
+  'status.rendered': 'Mapant gerechnet',
+  'status.free': 'LiDAR frei verfügbar',
+  'status.fee': 'LiDAR gegen Gebühr',
+  'status.none': 'Kein LiDAR verfügbar',
 
   'layers.title': 'Ebenen',
   'layers.toggle': 'Ebenen',

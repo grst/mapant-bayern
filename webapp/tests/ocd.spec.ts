@@ -35,7 +35,7 @@ test('exports the print area as an OCAD file built on the ISOM symbol set', asyn
   const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
   await page.locator('.print-export-ocd').click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('mapant-bayern_1-4000.ocd');
+  expect(download.suggestedFilename()).toBe('mapant-germany_1-4000.ocd');
 
   const file = testInfo.outputPath('export.ocd');
   await download.saveAs(file);

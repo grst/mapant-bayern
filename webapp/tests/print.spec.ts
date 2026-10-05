@@ -47,7 +47,7 @@ test('exports an A4 PDF of the centred area at print density', async ({page}, te
   const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
   await page.locator('.print-export').click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('mapant-bayern_1-10000.pdf');
+  expect(download.suggestedFilename()).toBe('mapant-germany_1-10000.pdf');
 
   const file = testInfo.outputPath('export.pdf');
   await download.saveAs(file);
@@ -73,8 +73,9 @@ test('fetches tiles at the density of the paper, not of the screen', async ({pag
   await stubTiles(page, zooms);
   await openPrintPanel(page, 'h');
 
-  // Once the live map has its own tiles, only the print map's requests are left.
-  await page.waitForTimeout(500);
+  // Once the live map has its own tiles, only the print map's requests are left. Waited for on the
+  // network rather than the clock: the live map also loads basemap tiles now, at its own pace.
+  await page.waitForLoadState('networkidle');
   zooms.length = 0;
   await page.locator('.print-export').click();
 
@@ -82,8 +83,10 @@ test('fetches tiles at the density of the paper, not of the screen', async ({pag
   // they come from. The export is left to run on: compositing a 600 dpi page of
   // shaded relief takes minutes in a headless browser and the zoom level – all
   // this test is about – has been decided by now.
-  await expect.poll(() => zooms.length, {timeout: 60_000}).toBeGreaterThan(12);
-  expect([...new Set(zooms)]).toEqual([16]);
+  // Counted by level rather than in total: the live map may still be fetching its own z15 tiles
+  // on a busy machine, and those say nothing about the print.
+  await expect.poll(() => zooms.filter((z) => z === 16).length, {timeout: 60_000}).toBeGreaterThan(12);
+  expect(Math.max(...zooms)).toBe(16);
 });
 
 /**

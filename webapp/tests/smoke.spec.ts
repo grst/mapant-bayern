@@ -26,19 +26,19 @@ test.beforeEach(async ({page}) => {
 test('renders the map and records the default view in the URL', async ({page}) => {
   await page.goto('/');
   await expect(page.locator('#map canvas')).toBeVisible();
-  // Immenstadt im Allgäu at zoom 12.
-  await expect.poll(() => page.url()).toMatch(/#map=12\.00\/47\.563\d\d\/10\.214\d\d/);
+  // All of Germany: map zoom 5.5, link zoom 6.5.
+  await expect.poll(() => page.url()).toMatch(/#map=6\.50\/51\.160\d\d\/10\.450\d\d/);
   await expect(page.locator('#attribution')).toContainText('OpenStreetMap');
 });
 
-test('credits OpenFreeMap only where its basemap is shown', async ({page}) => {
+test('credits OpenFreeMap at every zoom, since its basemap fills in wherever there is no map', async ({page}) => {
   // Map zoom 8 (link zoom 9), below the orienteering map.
   await page.goto('/#map=9/47.5635/10.2142');
   await expect(page.locator('#attribution')).toContainText('OpenFreeMap');
 
   await page.goto('/#map=13/47.5635/10.2142');
   await expect(page.locator('#attribution')).toContainText('OpenStreetMap');
-  await expect(page.locator('#attribution')).not.toContainText('OpenFreeMap');
+  await expect(page.locator('#attribution')).toContainText('OpenFreeMap');
 });
 
 test('shows the zoom hint only below the orienteering map zoom levels', async ({page}) => {
@@ -106,7 +106,7 @@ test('switches language and remembers it in the URL', async ({page}) => {
 
 test('about page renders the repository README', async ({page}) => {
   await page.goto('/about.html#lang=en');
-  await expect(page.getByRole('heading', {level: 1, name: 'Mapant Bayern'})).toBeVisible();
+  await expect(page.getByRole('heading', {level: 1, name: 'Mapant Germany'})).toBeVisible();
   await expect(page.getByRole('link', {name: 'karttapullautin'}).first()).toBeVisible();
   await expect(page.getByRole('heading', {name: 'Data sources'})).toBeVisible();
 });

@@ -6,14 +6,23 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl';
-import {ARCHIVE, fetchTile, MAPANT_SOURCE_URL} from './archive';
+import {ARCHIVE, ARCHIVES, fetchTile, intersects, isMapped} from './archive';
 import {basemap, BASEMAP_ATTRIBUTION} from './basemap';
 import {isomLayers} from './isomstyle';
+import {t} from './i18n';
+import type {Key} from './i18n/en';
+import {STATE_LABELS_URL, STATES, STATES_URL, STATUS_COLORS, STATUSES, type LidarStatus} from './states';
 import {registerMergedTiles} from './tilemerge';
 
 /** The archive's tile levels. The deepest is the only one that carries the full map. */
 export const TILES_MIN_ZOOM = ARCHIVE.minZoom;
 export const TILES_MAX_ZOOM = ARCHIVE.maxZoom;
+
+/** The map's tiles at their own level, from whichever state archives hold them (archive.ts). */
+addProtocol('mapant-tiles', async (request, abortController) => {
+  const [z, x, y] = request.url.replace('mapant-tiles://', '').split('/').map(Number);
+  return {data: (await fetchTile(z, x, y, abortController.signal)) ?? new ArrayBuffer(0)};
+});
 
 /**
  * For a print: the deepest level, whatever the zoom. MapLibre picks the tile level from the zoom
@@ -60,11 +69,8 @@ const GLYPHS_URL = `${location.origin}/fonts/{fontstack}/{range}.pbf`;
 const OSM_ATTRIBUTION =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>';
 
-const MAPANT_ATTRIBUTION = [
-  '© <a href="https://geodaten.bayern.de/opengeodata/" target="_blank" rel="noopener">Bayerische Vermessungsverwaltung</a> ' +
-    '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a>)',
-  '© Gregor Sturm (<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC-BY-NC-4.0</a>)',
-];
+const MAPANT_ATTRIBUTION =
+  '© Gregor Sturm (<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC-BY-NC-4.0</a>)';
 
 const MAPTERHORN_ATTRIBUTION =
   '© <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>';
@@ -99,10 +105,24 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     data,
   });
 
-  const background = basemap(MAP_MIN_ZOOM);
+  // At every zoom, wherever there is no orienteering map: a tile wholly under the map is not even
+  // fetched (isMapped), and the map's white paper (`coverage`) hides the rest where they overlap.
+  // Not on a print, which would pull its tiles at 600 dpi.
+  const background = options.print ? basemap(MAP_MIN_ZOOM) : basemap(Infinity, isMapped);
   const sources: Record<string, SourceSpecification> = {
     ...background.sources,
-    mapant: {type: 'vector', url: options.print ? 'mapant-print://' : MAPANT_SOURCE_URL},
+    mapant: options.print
+      ? {type: 'vector', url: 'mapant-print://'}
+      : {
+          type: 'vector',
+          tiles: ['mapant-tiles://{z}/{x}/{y}'],
+          minzoom: TILES_MIN_ZOOM,
+          maxzoom: TILES_MAX_ZOOM,
+          ...(ARCHIVE.bounds ? {bounds: ARCHIVE.bounds} : {}),
+        },
+    states: geojson(STATES_URL),
+    'state-labels': geojson(STATE_LABELS_URL),
+    'rendered-areas': geojson(renderedAreas()),
     dem: {
       type: 'raster-dem',
       tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
@@ -116,10 +136,19 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     'drawing-labels': geojson(options.drawingLabels ?? EMPTY_COLLECTION),
   };
 
+  // The state shading goes between the basemap's ground and its labels, so the names stay legible.
+  // The basemap's own state names are left out: the shading's labels carry them.
+  const labels = background.layers.filter(
+    (layer) => layer.type === 'symbol' && (options.print || layer.id !== 'basemap-label_state'),
+  );
+  const ground = background.layers.filter((layer) => layer.type !== 'symbol');
   const layers: LayerSpecification[] = [
-    // Only below the orienteering map (a layer's maxzoom is exclusive, its minzoom inclusive),
-    // so nothing is ever fetched from openfreemap.org while the orienteering map is on screen.
-    ...background.layers,
+    // Below the orienteering map, which covers it with its paper where there is map. Its labels
+    // too: where they name the same place as the town names on top, collision keeps only those.
+    ...ground,
+    ...(options.print ? [] : stateLayers()),
+    ...labels,
+    ...(options.print ? [] : [stateLabelLayer()]),
     ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}),
     {
       id: 'hillshade',
@@ -142,6 +171,121 @@ export function createStyle(options: StyleOptions): StyleSpecification {
   ];
 
   return {version: 8, glyphs: GLYPHS_URL, sprite: background.sprite, sources, layers};
+}
+
+/**
+ * What each state publishes of its LiDAR, as a tint over the basemap below the orienteering map's
+ * zooms: rendered, free, against a fee, or not at all (states.ts). Areas rendered in a state that
+ * is not -- a test region -- are drawn as rendered on top.
+ */
+function stateLayers(): LayerSpecification[] {
+  const statusOf = ['match', ['get', 'id'], ...STATES.flatMap((s) => [s.id, s.status]), 'none'];
+  const color = [
+    'match',
+    statusOf,
+    ...STATUSES.flatMap((status) => [status, STATUS_COLORS[status]]),
+    STATUS_COLORS.none,
+  ] as ExpressionSpecification;
+  return [
+    {
+      id: 'states-fill',
+      type: 'fill',
+      source: 'states',
+      maxzoom: MAP_MIN_ZOOM,
+      paint: {'fill-color': color, 'fill-opacity': 0.32},
+    },
+    {
+      id: 'rendered-areas-fill',
+      type: 'fill',
+      source: 'rendered-areas',
+      maxzoom: MAP_MIN_ZOOM,
+      paint: {'fill-color': STATUS_COLORS.rendered, 'fill-opacity': 0.6},
+    },
+    {
+      id: 'states-outline',
+      type: 'line',
+      source: 'states',
+      maxzoom: MAP_MIN_ZOOM,
+      paint: {'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.75, 9, 2]},
+    },
+  ];
+}
+
+const STATUS_KEYS: Record<LidarStatus, Key> = {
+  rendered: 'status.rendered',
+  free: 'status.free',
+  fee: 'status.fee',
+  none: 'status.none',
+};
+
+/** A darker shade of each status colour, legible as text on the tinted basemap. */
+const STATUS_TEXT_COLORS: Record<LidarStatus, string> = {
+  rendered: '#0f4d26',
+  free: '#123f6b',
+  fee: '#6b4204',
+  none: '#3a3a3a',
+};
+
+/**
+ * Each state's name with its status beneath it, in the status colour: the shading labelled where it
+ * is rather than in a legend. In the current language; set again when it changes (main.ts).
+ */
+export function stateLabelText(): ExpressionSpecification {
+  const status = ['match', ['get', 'id'], ...STATES.flatMap((s) => [s.id, s.status]), 'none'];
+  const byStatus = (pick: (status: LidarStatus) => string) =>
+    ['match', status, ...STATUSES.flatMap((s) => [s, pick(s)]), pick('none')] as unknown as ExpressionSpecification;
+  return [
+    'format',
+    ['get', 'name'],
+    {},
+    '\n',
+    {},
+    byStatus((s) => t(STATUS_KEYS[s])),
+    {'font-scale': 0.9, 'text-font': ['literal', ['Noto Sans Medium']], 'text-color': byStatus((s) => STATUS_TEXT_COLORS[s])},
+  ];
+}
+
+export const STATE_LABEL_LAYER = 'states-label';
+
+function stateLabelLayer(): LayerSpecification {
+  return {
+    id: STATE_LABEL_LAYER,
+    type: 'symbol',
+    source: 'state-labels',
+    maxzoom: MAP_MIN_ZOOM,
+    layout: {
+      'text-field': stateLabelText(),
+      'text-font': ['literal', ['Noto Sans Medium']],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 7, 16],
+      'text-max-width': 8,
+      // City states are small: their label may stand over the state around them.
+      'text-padding': 1,
+    },
+    paint: {
+      'text-color': '#000000',
+      'text-halo-color': 'rgba(255, 255, 255, 0.95)',
+      'text-halo-width': 2,
+      'text-halo-blur': 0.5,
+    },
+  };
+}
+
+/** The bounds of the archives of states not rendered as a whole: test regions, for now. */
+function renderedAreas(): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: ARCHIVES.filter((a) => a.state.status !== 'rendered').map(({state, info}) => {
+      const [west, south, east, north] = info.bounds;
+      return {
+        type: 'Feature',
+        properties: {id: state.id},
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
+        },
+      };
+    }),
+  };
 }
 
 /**
@@ -213,15 +357,28 @@ function drawingLayers(): LayerSpecification[] {
 }
 
 /**
- * The notices for what is on screen: the orienteering map's sources from the zoom it is shown at,
- * and the terrain model's while the hill shading is on.
+ * The notices for what is on screen: the orienteering map's sources from the zoom it is shown at
+ * -- the LiDAR of each state whose archive the view touches -- and the terrain model's while the
+ * hill shading is on.
  */
-export function attributions(zoom: number, visible: Visibility): string[] {
+export function attributions(
+  zoom: number,
+  visible: Visibility,
+  view?: [number, number, number, number],
+  {basemap = true} = {},
+): string[] {
   const notices = [OSM_ATTRIBUTION];
-  if (zoom < MAP_MIN_ZOOM) {
+  // The basemap shows wherever there is no orienteering map, at every zoom -- but not on a print.
+  if (basemap) {
     notices.push(BASEMAP_ATTRIBUTION);
-  } else {
-    notices.push(...MAPANT_ATTRIBUTION);
+  }
+  if (zoom >= MAP_MIN_ZOOM) {
+    for (const {state, info} of ARCHIVES) {
+      if (state.attribution && (!view || intersects(view, info.bounds))) {
+        notices.push(state.attribution);
+      }
+    }
+    notices.push(MAPANT_ATTRIBUTION);
   }
   if (visible.hillshade) {
     notices.push(MAPTERHORN_ATTRIBUTION);
@@ -230,8 +387,13 @@ export function attributions(zoom: number, visible: Visibility): string[] {
 }
 
 /** The same notices as plain text, for the PDF footer. */
-export function attributionText(zoom: number, visible: Visibility): string {
-  return attributions(zoom, visible)
+export function attributionText(
+  zoom: number,
+  visible: Visibility,
+  view?: [number, number, number, number],
+  options: {basemap?: boolean} = {},
+): string {
+  return attributions(zoom, visible, view, options)
     .map((notice) => notice.replace(/<[^>]*>/g, ''))
     .join(' | ');
 }

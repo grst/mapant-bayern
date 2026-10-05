@@ -199,6 +199,19 @@ function encode(layers: Map<string, MergedLayer>, extent: number): ArrayBuffer {
 /** The extent the children are written at: mapant-nf cuts its 512 px tiles at 8192. */
 const CHILD_EXTENT = 8192;
 
+/**
+ * Several archives' versions of one tile as one: the layers of the same name joined, geometry as
+ * it is. That is what a tile on a border between two states' archives needs -- each archive holds
+ * its own side, buffer included, exactly as two parents' copies of a tile do in mapant-nf.
+ */
+export function mergeTiles(tiles: ArrayBuffer[]): ArrayBuffer {
+  const layers = new Map<string, MergedLayer>();
+  for (const data of tiles) {
+    appendTile(layers, data, 0, 0, CHILD_EXTENT, 1);
+  }
+  return encode(layers, CHILD_EXTENT);
+}
+
 export interface MergedTilesOptions {
   /** URL scheme MapLibre asks for tiles under: `<scheme>://{z}/{x}/{y}`. */
   scheme: string;
