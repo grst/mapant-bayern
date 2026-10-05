@@ -39,6 +39,17 @@ pipeline fetches from it (Bavaria's benchmark, pointed at this samplesheet).
 
 ## Test run
 
-Not yet rendered (the overnight run on 2026-10-05 was stopped before its first grid finished). An
-earlier four-tile run proved the path end to end: the zips download, verify by size, unpack and
-render. The server delivered ~1 MB/s per connection.
+`conf/test_dresden.yml`, 2026-10-05, in a 16-vCPU devcontainer (4 karttapullautin workers -- the 2 km
+tiles hold four times the points of a 1 km tile -- one grid at a time; the map-shaping settings
+exactly as in the config): 288 core tiles in 9 grids of 6 x 6 tiles. Six grids rendered, ~3.5 h; a
+grid peaked at 3.1-5.3 GB with 4 workers, about 1.3 GB per worker. The archive is 170 MB.
+
+**Three grids are missing**, lost to the server rather than to the pipeline. Around 09:00 the share
+first answered some requests with 502s and with 960-byte error pages sent as 200 (mapant-nf now
+retries those rather than taking them for wrong files), then with 404 for every tile, including
+tiles it had served half an hour before, and for the share's own page. The portal still names the
+same share. Whether GeoSN withdrew it or blocked the address after ~350 GB in a day is not known;
+check that a tile URL answers before a production run.
+
+The OSM extraction is what needs memory here: each osmium pass over `sachsen-latest.osm.pbf`
+peaked at 14.7 GB, so they must not run three at once on a small machine.
