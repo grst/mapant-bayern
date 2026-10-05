@@ -18,7 +18,7 @@ osm_pbf: input/bayern-latest.osm.pbf
 region_bbox: '9.6673889,47.2437222,10.4499444,47.7203056'
 region_bbox_crs: lonlat
 
-download_jobs: 8
+download_jobs: 16 
 download_limit_rate: '200M'
 
 # MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
@@ -29,7 +29,7 @@ max_zoom: 15
 # The look of the map. The tiles CSV (`pullauta_ini`) names conf/pullauta.bayern.ini for every tile, LAS 1.2
 # and 1.4 alike; this one is only the default for a tile that names none.
 pullauta_ini: conf/pullauta.bayern.ini
-vectorconf: ../kp/osm.txt
+vectorconf: conf/osm.txt
 
 grid_size: 16
 pullauta_processes: 16 
