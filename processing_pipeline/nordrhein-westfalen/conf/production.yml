@@ -12,7 +12,7 @@ osm_pbf: input/nordrhein-westfalen-latest.osm.pbf
 pullauta_ini: ../bayern/conf/pullauta.bayern.ini
 vectorconf: ../bayern/conf/osm.txt
 
-download_jobs: 8
+download_jobs: 4
 download_limit_rate: '200M'
 
 # MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
@@ -21,7 +21,7 @@ base_zoom: 11
 max_zoom: 15
 
 grid_size: 16
-pullauta_processes: 16
+pullauta_processes: 6 
 
 osm_chunk_size: 4
 
