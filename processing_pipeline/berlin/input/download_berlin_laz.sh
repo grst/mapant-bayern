@@ -131,3 +131,7 @@ printf '%s\n' "${SELECTED[@]}" \
     | xargs -P "$JOBS" -I{} bash -c 'download_one "$@"' _ {} "$OUTDIR" "$EXTRACT" "$KEEP_ZIP"
 
 echo "All done."
+
+
+# repackage as laz
+IMG=docker.io/pdal/pdal:latest; podman pull "$IMG" && cd $OUTDIR && for z in *.zip; do unzip -oq "$z" && find . -maxdepth 1 -name '*.las' -printf '%f\0' | IMG="$IMG" xargs -0 -P "$(nproc)" -I{} sh -c 'podman run --rm -v "$PWD":/data:z -w /data "$IMG" pdal translate --writers.las.forward=all "$1" "${1%.las}.laz" && rm -- "$1"' _ {}; done
