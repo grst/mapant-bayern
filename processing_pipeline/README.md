@@ -25,8 +25,8 @@ data, and how the tile indices were built, is in
 | Brandenburg | free | dl-de/by-2-0 | `.zip` per 1 km tile, no checksum | 13,086 | [`brandenburg/`](brandenburg/) |
 | Sachsen | free | dl-de/by-2-0 | `.zip` per 2 km tile, partly SHA-1 | 4,981 | [`sachsen/`](sachsen/) |
 | Thüringen | free | dl-de/by-2-0 | `.zip` per 1 km tile (2014-2019), no checksum | 17,127 | [`thueringen/`](thueringen/) |
-| Berlin | free | dl-de/by-2-0 | 8 regional `.zip` of 1-37 GB | -- | not per tile |
-| Saarland | free, thinned to 4 pts/m² | dl-de/by-2-0 | download portal, by area | -- | not per tile |
+| Berlin | free | dl-de/zero-2-0 | 8 regional `.zip` of 1-37 GB, unpacked to a local mirror | 1,066 | [`berlin/`](berlin/) |
+| Saarland | free, thinned to 4 pts/m² | dl-de/by-2-0 | one `.zip` per Landkreis, unpacked to a local mirror | 2,775 | [`saarland/`](saarland/) |
 | Sachsen-Anhalt | free for the Halle region only, elsewhere against a fee | dl-de/by-2-0 | one packed dataset | -- | not statewide |
 | Baden-Württemberg | against a fee (3-80 €/km²) | | | | |
 | Niedersachsen | against a fee (3.75-30 €/km²) | | | | |
@@ -37,9 +37,8 @@ data, and how the tile indices were built, is in
 | Schleswig-Holstein | not available | | | | |
 
 A state gets a folder here when its point cloud is free **and** can be downloaded per tile. Berlin
-would need its bundles unpacked to local storage first; that is deliberately not done here.
-Saarland hands out its free point cloud by area through its portal, which a tiles CSV cannot
-point at.
+and Saarland only hand out large bundles; those were unpacked to a local HTTP mirror, which their
+`input/laz_tiles.local.csv` points at.
 
 ## One folder per state
 

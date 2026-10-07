@@ -1,0 +1,34 @@
+# The full production run over Saarland: every tile in input/laz_tiles.local.csv, no region_bbox.
+# Bavaria's production settings (../bayern/conf/production.yml); sizing comes from the -c config
+# in run_prod.sh.
+#
+# 2,775 x 1 km (.laz, 104 GiB, thinned to 4 pts/m^2), EPSG:25832, served from the local mirror
+# (see ../README.md).
+
+tiles_csv: input/laz_tiles.local.csv
+osm_pbf: input/saarland-latest.osm.pbf
+
+# The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
+# state has had a parameter sweep of its own.
+# -> only difference for now is in-memory file system
+pullauta_ini: conf/pullauta.saarland.ini
+vectorconf: ../bayern/conf/osm.txt
+
+download_jobs: 1
+download_limit_rate: '1000M'
+
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+grid_size: 8 
+pullauta_processes: 2
+
+osm_chunk_size: 2
+
+attribution: 'LiDAR &copy; <a href="https://geoportal.saarland.de">GeoBasis DE/LVGL-SL (2025)</a>, dl-de/by-2-0'
+publish_mode: link
+
+map_title: 'mapant -- Saarland'
+outdir: /scratch/mapant_run/saarland

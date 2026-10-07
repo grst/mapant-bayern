@@ -1,11 +1,11 @@
-# The full production run over Sachsen: every tile in input/laz_tiles.csv, no region_bbox.
+# The full production run over Berlin: every tile in input/laz_tiles.local.csv, no region_bbox.
 # Bavaria's production settings (../bayern/conf/production.yml); sizing comes from the -c config
-# in run_prod.sh. As there, workDir belongs on the instance's NVMe (-w) and outdir somewhere durable.
+# in run_prod.sh.
 #
-# 4,989 x 2 km (.zip), EPSG:25833.
+# 1,066 x 1 km (.laz, 61.5 GiB), EPSG:25833, served from the local mirror (see ../README.md).
 
 tiles_csv: input/laz_tiles.local.csv
-osm_pbf: input/sachsen-latest.osm.pbf
+osm_pbf: input/berlin-latest.osm.pbf
 
 # The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
 # state has had a parameter sweep of its own.
@@ -20,15 +20,13 @@ download_limit_rate: '200M'
 base_zoom: 11
 max_zoom: 15
 
-# Sachsen's tiles are 2 x 2 km, so a grid of 8 x 8 tiles covers the 256 km^2 -- and roughly the
-# bytes -- of Bavaria's 16 x 16 grids of 1 km tiles.
-grid_size: 8
+grid_size: 16
 pullauta_processes: 6
 
 osm_chunk_size: 1
 
-attribution: 'LiDAR &copy; <a href="https://www.geodaten.sachsen.de">GeoSN</a>, dl-de/by-2-0'
+attribution: 'LiDAR &copy; <a href="https://gdi.berlin.de">Geoportal Berlin / Airborne Laserscanning (ALS)</a>, dl-de/zero-2-0'
 publish_mode: link
 
-map_title: 'mapant -- Sachsen'
-outdir: /scratch/mapant/sachsen 
+map_title: 'mapant -- Berlin'
+outdir: /scratch/mapant/berlin
