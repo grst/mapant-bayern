@@ -24,6 +24,7 @@ export const de: Record<Key, string> = {
   'layers.hillshade': 'Schummerung',
   'layers.places': 'Ortsnamen',
   'layers.private': 'Privatgelände',
+  'layers.cliffs': 'Felsen',
 
   'draw.line': 'Strecke messen',
   'draw.polygon': 'Fläche messen',

@@ -1,5 +1,7 @@
 :root {
   --bg: #ffffff;
+  /* The map menus: opaque, but see-through on phones (below), where they cover much of the map. */
+  --panel-bg: var(--bg);
   --fg: #1b1b1b;
   --muted: #5a5a5a;
   /* RAL 5015 sky blue. White on it reaches 5:1, so it also serves as the link
@@ -309,6 +311,10 @@ a {
 /* ------------------------------------------------------------ responsive */
 
 @media (max-width: 43rem) {
+  :root {
+    --panel-bg: rgb(255 255 255 / 80%);
+  }
+
   .nav-toggle {
     display: block;
   }

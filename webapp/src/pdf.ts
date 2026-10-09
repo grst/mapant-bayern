@@ -14,7 +14,7 @@ import {jsPDF} from 'jspdf';
 import {Map} from 'maplibre-gl';
 import {fromLonLat, toLonLat, type LonLat, type XY} from './geo';
 import {formatNumber} from './i18n';
-import {isPrivateArea} from './isomstyle';
+import {CLIFFS_TABLE, isPrivateArea} from './isomstyle';
 import {DRAWING_ACCENT, hillshadeStyle, PLACES_URL, type Visibility} from './layers';
 import {
   canvasFits,
@@ -89,7 +89,13 @@ export async function exportPdf(request: PrintRequest): Promise<void> {
   drawIsom(
     surface,
     features,
-    {scale, project, include: (feature) => visible.private || !isPrivateArea(feature.properties.isom_code)},
+    {
+      scale,
+      project,
+      include: (feature) =>
+        (visible.private || !isPrivateArea(feature.properties.isom_code)) &&
+        (visible.cliffs || feature.layer !== CLIFFS_TABLE),
+    },
     [0, 0, mapWidth, mapHeight],
   );
 

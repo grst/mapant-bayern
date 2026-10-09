@@ -72,10 +72,22 @@ test('private property is shown by default and can be switched off', async ({pag
 
   const olive = page.locator('input[data-layer="p"]');
   await expect(olive).toBeChecked();
-  await expect.poll(() => page.url()).toContain('layers=l,p&');
+  await expect.poll(() => page.url()).toContain('layers=l,p,c&');
 
   await olive.uncheck();
-  await expect.poll(() => page.url()).toContain('layers=l&');
+  await expect.poll(() => page.url()).toContain('layers=l,c&');
+});
+
+test('cliffs are shown by default and can be switched off', async ({page}) => {
+  await page.goto('/#map=13/47.5635/10.2142&lang=en');
+  await page.getByRole('button', {name: 'Layers'}).click();
+
+  const cliffs = page.locator('input[data-layer="c"]');
+  await expect(cliffs).toBeChecked();
+  await expect.poll(() => page.url()).toContain('layers=l,p,c&');
+
+  await cliffs.uncheck();
+  await expect.poll(() => page.url()).toContain('layers=l,p&');
 });
 
 test('the export panels open one at a time', async ({page}) => {

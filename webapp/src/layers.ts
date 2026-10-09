@@ -8,7 +8,7 @@ import type {
 } from 'maplibre-gl';
 import {ARCHIVE_ZOOMS, fetchTile, intersects, isMapped, LOADED_ARCHIVES} from './archive';
 import {basemap, BASEMAP_ATTRIBUTION} from './basemap';
-import {isomLayers} from './isomstyle';
+import {CLIFFS_TABLE, isomLayers} from './isomstyle';
 import {t} from './i18n';
 import type {Key} from './i18n/en';
 import {STATE_LABELS_URL, STATES, STATES_URL, STATUS_COLORS, STATUSES, type LidarStatus} from './states';
@@ -57,7 +57,7 @@ const MAPTERHORN_ATTRIBUTION =
   '© <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>';
 
 /** The layers a visitor can switch on and off. */
-export type OptionalLayer = 'hillshade' | 'places' | 'private';
+export type OptionalLayer = 'hillshade' | 'places' | 'private' | 'cliffs';
 
 export type Visibility = Record<OptionalLayer, boolean>;
 
@@ -66,11 +66,17 @@ const PRIVATE_LAYERS = isomLayers({source: 'mapant', minZoom: 0})
   .filter((layer) => /-520\.\d+$/.test(layer.id))
   .map((layer) => layer.id);
 
+/** The orienteering map's style layers that draw the `cliffs` table, in both passes. */
+const CLIFF_LAYERS = isomLayers({source: 'mapant', minZoom: 0})
+  .filter((layer) => (layer as {'source-layer'?: string})['source-layer'] === CLIFFS_TABLE)
+  .map((layer) => layer.id);
+
 /** Style layers behind each switchable layer. */
 export const OPTIONAL_STYLE_LAYERS: Record<OptionalLayer, string[]> = {
   hillshade: ['hillshade'],
   places: ['places'],
   private: PRIVATE_LAYERS,
+  cliffs: CLIFF_LAYERS,
 };
 
 export interface StyleOptions {
@@ -115,7 +121,9 @@ export function createStyle(options: StyleOptions): StyleSpecification {
   // The basemap's own state names are left out: the shading's labels carry them.
   const labels = background.layers.filter((layer) => layer.type === 'symbol' && layer.id !== 'basemap-label_state');
   const ground = background.layers.filter((layer) => layer.type !== 'symbol');
-  const privateVisibility = visibility('private');
+  // The orienteering map's own switchable layers.
+  const isomVisibility = (id: string) =>
+    (['private', 'cliffs'] as const).find((layer) => OPTIONAL_STYLE_LAYERS[layer].includes(id));
   const layers: LayerSpecification[] = [
     // Below the orienteering map, which covers it with its paper where there is map. Its labels
     // too: where they name the same place as the town names on top, collision keeps only those.
@@ -123,11 +131,12 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     ...stateLayers(),
     ...labels,
     stateLabelLayer(),
-    ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}).map((layer) =>
-      OPTIONAL_STYLE_LAYERS.private.includes(layer.id)
-        ? ({...layer, layout: {...layer.layout, visibility: privateVisibility}} as LayerSpecification)
-        : layer,
-    ),
+    ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}).map((layer) => {
+      const optional = isomVisibility(layer.id);
+      return optional
+        ? ({...layer, layout: {...layer.layout, visibility: visibility(optional)}} as LayerSpecification)
+        : layer;
+    }),
     hillshadeLayer(visibility('hillshade')),
     placesLayer(visibility('places')),
     ...drawingLayers(),

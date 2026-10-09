@@ -60,7 +60,7 @@
   right: calc(2rem + 4px + 0.4rem);
   padding: 0.5rem 0.7rem;
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--panel-bg);
   box-shadow: var(--shadow);
   font-size: 0.85rem;
   white-space: nowrap;
@@ -96,7 +96,7 @@
   overflow-y: auto;
   padding: 0.6rem 0.75rem 0.75rem;
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--panel-bg);
   box-shadow: var(--shadow);
   font-size: 0.85rem;
 }

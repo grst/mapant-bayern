@@ -30,10 +30,15 @@ import {crsAt} from './states';
 import {archiveSource} from './vector/source';
 
 /** The layers the share link can switch, by their code in it. */
-const LAYER_BY_CODE: Record<LayerCode, OptionalLayer> = {h: 'hillshade', l: 'places', p: 'private'};
+const LAYER_BY_CODE: Record<LayerCode, OptionalLayer> = {
+  h: 'hillshade',
+  l: 'places',
+  p: 'private',
+  c: 'cliffs',
+};
 
 function visibilityOf(codes: Set<LayerCode>): Visibility {
-  return {hillshade: codes.has('h'), places: codes.has('l'), private: codes.has('p')};
+  return {hillshade: codes.has('h'), places: codes.has('l'), private: codes.has('p'), cliffs: codes.has('c')};
 }
 
 const initialState = readState();
@@ -56,6 +61,7 @@ const toggles: LayerToggle[] = (
     ['h', 'layers.hillshade'],
     ['l', 'layers.places'],
     ['p', 'layers.private'],
+    ['c', 'layers.cliffs'],
   ] as const
 ).map(([code, labelKey]) => ({
   code,

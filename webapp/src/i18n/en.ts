@@ -22,6 +22,7 @@ export const en = {
   'layers.hillshade': 'Hill shading',
   'layers.places': 'Town names',
   'layers.private': 'Private property',
+  'layers.cliffs': 'Cliffs',
 
   'draw.line': 'Measure distance',
   'draw.polygon': 'Measure area',
