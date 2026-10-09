@@ -30,3 +30,16 @@ As in Bavaria's index, plus `inner_laz`, the `.laz` member of each archive (info
 ```sh
 scripts/build_laz_tile_index.sh
 ```
+
+## Local mirror
+
+The LGB server is too slow to feed a run directly, so the production run reads
+`laz_tiles.local.csv`: the same rows, pointed at an unchanged mirror of the archives on
+`http://192.168.193.220:10200/brandenburg/`. Rebuild it after the index changes:
+
+```sh
+python3 scripts/build_local_tile_index.py input/laz_tiles.csv input/laz_tiles.local.csv
+```
+
+It checks each archive's size on the mirror against the index and leaves out any that is missing
+or differs (none on 2026-10-09).

@@ -1,10 +1,11 @@
-# The full production run over Brandenburg: every tile in input/laz_tiles.csv, no region_bbox.
+# The full production run over Brandenburg: every tile in input/laz_tiles.local.csv, no region_bbox.
 # Bavaria's production settings (../bayern/conf/production.yml); sizing comes from the -c config
-# in run_prod.sh. As there, workDir belongs on the instance's NVMe (-w) and outdir somewhere durable.
+# in run_prod.sh.
 #
-# 13,086 x 1 km (.zip), EPSG:25833.
+# 13,086 x 1 km (.zip, 1.29 TiB), EPSG:25833, served from the local mirror of data.geobasis-bb.de
+# (see input/README.md).
 
-tiles_csv: input/laz_tiles.csv
+tiles_csv: input/laz_tiles.local.csv
 osm_pbf: input/brandenburg-latest.osm.pbf
 
 # The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
@@ -12,21 +13,21 @@ osm_pbf: input/brandenburg-latest.osm.pbf
 pullauta_ini: ../bayern/conf/pullauta.bayern.ini
 vectorconf: ../bayern/conf/osm.txt
 
-download_jobs: 8
-download_limit_rate: '200M'
+download_jobs: 1
+download_limit_rate: '1000M'
 
 # MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
 # and is cut at full detail at z15. One tiling task per z11 parent.
 base_zoom: 11
 max_zoom: 15
 
-grid_size: 16
-pullauta_processes: 16
+grid_size: 8
+pullauta_processes: 2
 
-osm_chunk_size: 4
+osm_chunk_size: 2
 
 attribution: 'LiDAR &copy; <a href="https://geobasis-bb.de">GeoBasis-DE/LGB</a>, dl-de/by-2-0'
 publish_mode: link
 
 map_title: 'mapant -- Brandenburg'
-outdir: /mnt/nvme/results/prod_brandenburg
+outdir: /scratch/mapant_run/brandenburg
