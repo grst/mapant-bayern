@@ -15,7 +15,7 @@ const OUTPUT = join(dirname(import.meta.dirname), 'public', 'places.geojson');
 
 // The states with a map archive (`archive` in src/states.ts), by their OSM administrative relations:
 // the names are drawn only at the orienteering map's zooms, so elsewhere they would never be seen.
-const MAPPED_STATES = ['DE-BY', 'DE-RP', 'DE-NW', 'DE-BB', 'DE-SN'];
+const MAPPED_STATES = ['DE-BY', 'DE-NW', 'DE-BE', 'DE-SL'];
 const QUERY = `
 [out:json][timeout:300];
 area["ISO3166-2"~"^(${MAPPED_STATES.join('|')})$"]["admin_level"="4"]->.mapped;
@@ -26,7 +26,7 @@ out body;
 const response = await fetch(OVERPASS_URL, {
   method: 'POST',
   // Overpass answers 406 without a real User-Agent.
-  headers: {'User-Agent': 'mapant-germany/1.0 (https://github.com/grst/mapant-bayern)'},
+  headers: {'User-Agent': 'mapant-germany/1.0 (https://github.com/grst/mapant-germany)'},
   body: new URLSearchParams({data: QUERY}),
 });
 

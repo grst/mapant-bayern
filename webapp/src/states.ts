@@ -24,11 +24,15 @@ export interface FederalState {
   name: string;
   status: LidarStatus;
   crs: StateCrs;
-  /**
-   * The state's archive, relative to MAPANT_TILES_BASE. Also there for a state rendered only in
-   * part -- a test region -- whose status is still that of its LiDAR.
-   */
+  /** The state's archive, relative to MAPANT_TILES_BASE, where it has been rendered. */
   archive?: string;
+  /**
+   * With an archive: the box its tiles can lie in, west, south, east, north -- the outline's box and
+   * 0.1° more, for the neighbours' ground the tiles along the border take in. Lets a tile find its
+   * archive before any header or outline is read; `tests/states.spec.ts` checks it against the
+   * outline.
+   */
+  reach?: [number, number, number, number];
   /** The LiDAR's copyright notice, shown while the state's map is on screen. */
   attribution?: string;
 }
@@ -43,7 +47,8 @@ export const STATES: FederalState[] = [
     name: 'Bayern',
     status: 'rendered',
     crs: 'EPSG:25832',
-    archive: 'mapant-bayern.pmtiles',
+    archive: 'mapant-bayern-v2.pmtiles',
+    reach: [8.87, 47.17, 13.92, 50.67],
     attribution:
       `© ${link('https://geodaten.bayern.de/opengeodata/', 'Bayerische Vermessungsverwaltung')} ` +
       `(${link('https://creativecommons.org/licenses/by/4.0/', 'CC-BY-4.0')})`,
@@ -53,7 +58,6 @@ export const STATES: FederalState[] = [
     name: 'Rheinland-Pfalz',
     status: 'free',
     crs: 'EPSG:25832',
-    archive: 'rheinland-pfalz.pmtiles',
     attribution: `© ${link('https://lvermgeo.rlp.de', 'GeoBasis-DE / LVermGeoRP')} (${DL_DE_BY})`,
   },
   {
@@ -62,6 +66,7 @@ export const STATES: FederalState[] = [
     status: 'rendered',
     crs: 'EPSG:25832',
     archive: 'mapant-nrw.pmtiles',
+    reach: [5.75, 50.22, 9.57, 52.63],
     attribution: `© ${link('https://www.bezreg-koeln.nrw.de/geobasis-nrw', 'Geobasis NRW')} (${DL_DE_ZERO})`,
   },
   {
@@ -69,7 +74,6 @@ export const STATES: FederalState[] = [
     name: 'Brandenburg',
     status: 'free',
     crs: 'EPSG:25833',
-    archive: 'brandenburg.pmtiles',
     attribution: `© ${link('https://geobasis-bb.de', 'GeoBasis-DE/LGB')} (${DL_DE_BY})`,
   },
   {
@@ -77,13 +81,28 @@ export const STATES: FederalState[] = [
     name: 'Sachsen',
     status: 'free',
     crs: 'EPSG:25833',
-    archive: 'sachsen.pmtiles',
     attribution: `© ${link('https://www.geodaten.sachsen.de', 'GeoSN')} (${DL_DE_BY})`,
   },
   {id: 'DE-TH', name: 'Thüringen', status: 'free', crs: 'EPSG:25832'},
-  {id: 'DE-BE', name: 'Berlin', status: 'free', crs: 'EPSG:25833'},
-  // Thinned to 4 points/m².
-  {id: 'DE-SL', name: 'Saarland', status: 'free', crs: 'EPSG:25832'},
+  {
+    id: 'DE-BE',
+    name: 'Berlin',
+    status: 'rendered',
+    crs: 'EPSG:25833',
+    archive: 'mapant-berlin.pmtiles',
+    reach: [12.99, 52.24, 13.86, 52.77],
+    attribution: `© ${link('https://gdi.berlin.de', 'Geoportal Berlin / Airborne Laserscanning (ALS)')} (${DL_DE_ZERO})`,
+  },
+  {
+    id: 'DE-SL',
+    name: 'Saarland',
+    status: 'rendered',
+    crs: 'EPSG:25832',
+    archive: 'mapant-saarland.pmtiles',
+    reach: [6.24, 49, 7.5, 49.73],
+    // Thinned to 4 points/m².
+    attribution: `© ${link('https://geoportal.saarland.de', 'GeoBasis DE/LVGL-SL (2025)')} (${DL_DE_BY})`,
+  },
   {id: 'DE-BW', name: 'Baden-Württemberg', status: 'fee', crs: 'EPSG:25832'},
   {id: 'DE-NI', name: 'Niedersachsen', status: 'fee', crs: 'EPSG:25832'},
   {id: 'DE-MV', name: 'Mecklenburg-Vorpommern', status: 'fee', crs: 'EPSG:25833'},

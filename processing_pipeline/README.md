@@ -1,77 +1,64 @@
-# Processing pipelines
+# Mapant Germany Processing Pipeline
 
-This folder documents how the maps are rendered, one folder per federal state. Every state is
-rendered with the same [mapant-nf](https://github.com/grst/mapant-nf) pipeline; what differs is
-the tile index (`input/laz_tiles.csv`), the OSM extract and the run configuration. The
-`karttapullautin_param_tuning` folder next to this one contains an agent skill to optimize
-karttapullautin params based on real orienteering maps from omaps.me that exist in the area.
+Mapant Germany is rendered using the
+[mapant-nf](https://github.com/grst/mapant-nf) nextflow pipeline that wraps
+[karttapullautin](https://github.com/karttapullautin/karttapullautin) and
+[karttapullautin2tiles](https://github.com/grst/kartapullautin2tiles) into into
+a [nextflow](https://www.nextflow.io/) workflow.
+Each federal state is processed in a separate run.
 
-## LiDAR point clouds in Germany
+Nextflow abstracts the compute infrastructure, which enables to run the same
+pipeline on a local machine, a HPC, or a cloud batch scheduler by just changing
+a few lines of config files.
 
-Which of the 16 states publish an airborne laserscanning point cloud, and whether it can be
-fetched tile by tile -- which is what mapant-nf needs. The status follows Jens Wiesehahn's
-[LiDAR availability overview](https://wiesehahn.github.io/posts/lidar_availability/) (updated
-2026-03), except for Hessen, which only sells its point cloud; the webapp's shading
-(`webapp/src/states.ts`) follows the same, and shows Sachsen-Anhalt as fee-based since only
-the Halle region is free. How each state delivers its
-data, and how the tile indices were built, is in
-[`docs/lidar_open_data_germany.md`](docs/lidar_open_data_germany.md) (surveyed 2026-08).
+## Obtaining input data
 
-| State | Point cloud | Licence | Delivery | Tiles | Folder |
-| --- | --- | --- | --- | --- | --- |
-| Bayern | **mapant rendered** | CC BY 4.0 | `.laz` per 1 km tile | 71,979 | [`bayern/`](bayern/) |
-| Rheinland-Pfalz | free | dl-de/by-2-0 | `.laz` per 1 km tile | 21,207 | [`rheinland-pfalz/`](rheinland-pfalz/) |
-| Nordrhein-Westfalen | **mapant rendered** | dl-de/zero-2-0 | `.laz` per 1 km tile, no checksum | 35,860 | [`nordrhein-westfalen/`](nordrhein-westfalen/) |
-| Brandenburg | free | dl-de/by-2-0 | `.zip` per 1 km tile, no checksum | 13,086 | [`brandenburg/`](brandenburg/) |
-| Sachsen | free | dl-de/by-2-0 | `.zip` per 2 km tile, partly SHA-1 | 4,981 | [`sachsen/`](sachsen/) |
-| Thüringen | free | dl-de/by-2-0 | `.zip` per 1 km tile (2014-2019), no checksum | 17,127 | [`thueringen/`](thueringen/) |
-| Berlin | free | dl-de/zero-2-0 | 8 regional `.zip` of 1-37 GB, unpacked to a local mirror | 1,066 | [`berlin/`](berlin/) |
-| Saarland | free, thinned to 4 pts/m² | dl-de/by-2-0 | one `.zip` per Landkreis, unpacked to a local mirror | 2,775 | [`saarland/`](saarland/) |
-| Sachsen-Anhalt | free for the Halle region only, elsewhere against a fee | dl-de/by-2-0 | one packed dataset | -- | not statewide |
-| Baden-Württemberg | against a fee (3-80 €/km²) | | | | |
-| Niedersachsen | against a fee (3.75-30 €/km²) | | | | |
-| Mecklenburg-Vorpommern | against a fee (10-80 €/km²) | | | | |
-| Bremen | against a fee (80 €/km²) | | | | |
-| Hessen | against a fee, through the Geodaten-online shop | | | | |
-| Hamburg | not available | | | | |
-| Schleswig-Holstein | not available | | | | |
+[This website](https://wiesehahn.github.io/posts/lidar_availability/) lists LiDAR availability for German fedaral
+states.
+Additionally there's an AI generated overview in [lidar_open_data_germany.md](lidar_open_data_germany.md).
 
-A state gets a folder here when its point cloud is free **and** can be downloaded per tile. Berlin
-and Saarland only hand out large bundles; those were unpacked to a local HTTP mirror, which their
-`input/laz_tiles.local.csv` points at.
+Additionally, OSM shape data is required to render streets, houses etc. The respective
+`.pbf` files can be downloaded from
+[geofabrik.de](https://download.geofabrik.de/europe/germany.html).
+See e.g.
+[download-osm.sh](./bayern/input/download_osm.sh).
 
-## One folder per state
+## Setting up the compute environment
 
-Each folder follows [`bayern/`](bayern/):
+Karttapullautin is now much faster than it was in the past.
+Processing on consumer grade hardware is now
+totally an option and mostly limited by download speed.
+Bavaria, the largest federal state with 15TB of data
+was processed on a single `c8id.32xlarge` instance on AWS EC2.
+It has 32vCPUs, 64GB of RAM and (that's important) 1.7TB of fast SSD
+scratch space.
 
-| Path | What it is |
-| --- | --- |
-| `input/laz_tiles.csv` | the samplesheet: one row per tile, in mapant-nf's [tiles CSV contract](https://github.com/grst/mapant-nf/blob/main/assets/schema_tiles.json) |
-| `input/README.md` | where the index comes from and how it was checked |
-| `input/download_osm.sh` | fetches the state's OSM extract from geofabrik |
-| `scripts/` | how the samplesheet was built, and `benchmark_download.sh` for the tile server |
-| `conf/production.yml` | the full run over the state |
-| `conf/test_<region>.yml` | a production-scale test region, where there is one |
-| `run_prod.sh`, `run_test_<region>.sh` | launch the runs |
+To install all dependencies and to setup scratch storage, the script [prepare_c8id.sh](scripts/prepare_c8id.sh)
+was run after launching the node.
 
-The zip states share one indexer, [`common/build_zip_tile_index.py`](common/build_zip_tile_index.py),
-which each `scripts/build_laz_tile_index.sh` calls with its source. mapant-nf downloads a `.zip`
-tile, unpacks the `.laz` inside and checks size and checksum where the samplesheet has them -- both
-optional, the checksum as a bare SHA-256 or `sha1:<hex>`.
+Other federal states were processed on different local hardware.
 
-**The new states are rendered with Bavaria's settings for now**: the same karttapullautin ini,
-OSM rules, zooms and grid size (`../bayern/conf/`), until each has had a parameter sweep of its own.
-Sachsen's grids are 8 x 8 tiles rather than 16 x 16, because its tiles are 2 km: the same ground per
-grid. The run scripts pin mapant-nf `1619f9c` (grst/mapant-nf#2), the first revision with zip
-support and optional sizes and checksums; `MAPANT_NF_REVISION` overrides it.
+## Running the pipeline
 
-## Test regions
+This is done by triggering the launch scripts.
+They trigger the nextflow pipeline with the appropriate configurations
+from the [./conf](./conf/) dir.
+E.g.
 
-| State | Region | Box (lat, lon) | Config |
-| --- | --- | --- | --- |
-| Rheinland-Pfalz | Koblenz, Rhein and Mosel | 50.4328, 7.5245 -- 50.2242, 7.7608 | [`test_koblenz.yml`](rheinland-pfalz/conf/test_koblenz.yml) |
-| Nordrhein-Westfalen | Teutoburger Wald | 51.9524, 8.6506 -- 51.8288, 8.9846 | [`test_teutoburger_wald.yml`](nordrhein-westfalen/conf/test_teutoburger_wald.yml) |
-| Brandenburg | Barnim and Schorfheide | 52.8056, 13.2518 -- 52.6325, 13.9321 | [`test_barnim.yml`](brandenburg/conf/test_barnim.yml) |
-| Sachsen | Dresden and the Elbsandstein | 51.1799, 13.5232 -- 50.9139, 14.0085 | [`test_dresden.yml`](sachsen/conf/test_dresden.yml) |
+* [run_allgaeu.sh](./bayern/run_allgaeu.sh) is the script to launch a test run of the Allgaeu region
+* [run_prod.sh](./bayern/run_prod.sh) starts the production run on the full Bavaria dataset.
 
-How each one went is in its state's README.
+## Compute requirements
+
+As an example, Bavaria has an area of ca.
+70,541 km².
+Downloading and processing the corresponding 71979 LIDAR tiles (ca.
+15 TB) on a c8id.8xlarge AWS EC2 instance with 64GB or memory and 32 vCPU this completed in 34h wall time, consuming 1088 allocated CPU hours.
+With on-demand pricing, this cost of the run was about 60 USD.
+This corresponds to 0.0109 CPUh or 0.00083 USD per tile.
+
+This is a significant improvement over a previous version of the pipeline that used an older version of karttapullautin, which used 5042 CPU hours for Bavaria (0.07 CPUh or 0.0028 USD per tile).
+
+Downloading tiles with multiple connections achieved an average speed around 2.5 - 3.5 Gbps.
+Therefore,
+the run was still compute-bound, but there wouldn't have been a huge benefit from adding much more compute resources.

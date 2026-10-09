@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {inflateSync} from 'node:zlib';
 import {expect, test, type Page} from '@playwright/test';
 import {serveArchive} from './archive';
 import {stubBasemap} from './basemap';
@@ -28,83 +29,90 @@ async function openPrintPanel(page: Page, layers: string): Promise<void> {
   await page.getByRole('button', {name: 'Export as PDF'}).first().click();
 }
 
+/** The PDF's content streams, inflated: what is drawn on the page. */
+function pageContent(pdf: Buffer): string {
+  const text = pdf.toString('latin1');
+  const streams: string[] = [];
+  for (const match of text.matchAll(/\/FlateDecode[^>]*>>\s*stream\r?\n/g)) {
+    const start = match.index! + match[0].length;
+    const end = text.indexOf('endstream', start);
+    try {
+      streams.push(inflateSync(pdf.subarray(start, end)).toString('latin1'));
+    } catch {
+      // An image's samples, or a stream cut short by the search: not page content.
+    }
+  }
+  return streams.join('\n');
+}
+
 test('states the ground area a print will cover, per scale and format', async ({page}) => {
   await stubTiles(page);
   await openPrintPanel(page, 'l');
 
   // A4 portrait at 1:10 000: 210 mm x 290 mm of paper.
-  await expect(page.locator('.print-area')).toHaveText('Covers 2.1 × 2.9 km');
+  await expect(page.locator('.pdf-panel .print-area')).toHaveText('Covers 2.1 × 2.9 km');
 
-  await page.locator('.print-orientation button[data-orientation="landscape"]').click();
-  await page.selectOption('.print-panel-body select', '7500');
-  await expect(page.locator('.print-area')).toHaveText('Covers 2.2 × 1.5 km');
+  await page.locator('.pdf-panel .print-orientation button[data-orientation="landscape"]').click();
+  await page.selectOption('.pdf-panel select', '7500');
+  await expect(page.locator('.pdf-panel .print-area')).toHaveText('Covers 2.2 × 1.5 km');
 });
 
-test('exports an A4 PDF of the centred area at print density', async ({page}, testInfo) => {
+test('exports the orienteering map as vectors, not as a picture of it', async ({page}, testInfo) => {
   await stubTiles(page);
-  await openPrintPanel(page, 'l');
+  await serveArchive(page);
+  await openPrintPanel(page, 'l,p');
+  // The fixture covers an A4 page at 1:4000.
+  await page.selectOption('.pdf-panel select', '4000');
 
   const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
-  await page.locator('.print-export').click();
+  await page.locator('.pdf-panel .print-export').click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('mapant-germany_1-10000.pdf');
+  expect(download.suggestedFilename()).toBe('mapant-germany_1-4000.pdf');
 
   const file = testInfo.outputPath('export.pdf');
   await download.saveAs(file);
-  const pdf = readFileSync(file).toString('latin1');
+  const pdf = readFileSync(file);
+  const text = pdf.toString('latin1');
 
   // A4 portrait in PDF points (210 x 297 mm).
-  expect(pdf).toMatch(/\/MediaBox\s*\[0 0 595\.\d+ 841\.\d+\]/);
-  // 210 mm x 290 mm of map at 600 dpi, losslessly compressed: one image pixel per
-  // pixel of paper.
-  expect(pdf).toMatch(/\/Width 4961\b/);
-  expect(pdf).toMatch(/\/Height 6850\b/);
-  expect(pdf).toContain('/Filter /FlateDecode');
+  expect(text).toMatch(/\/MediaBox\s*\[0 0 595\.\d+ 841\.\d+\]/);
+  // No image without hill shading: the map is paths.
+  expect(text).not.toContain('/Subtype /Image');
+  const content = pageContent(pdf);
+  // Contours in ISOM brown (#D15C00), stroked; the yellow of rough open land (#FFDD9B), filled.
+  // Colour components are written to two decimals.
+  expect(content).toMatch(/^0\.82 0\.36 0\.? RG$/m);
+  expect(content).toMatch(/^1\.? 0\.87 0\.61 rg$/m);
+  // Thousands of path segments, the deepest tiles' detail.
+  expect(content.match(/ l\n/g)?.length ?? 0).toBeGreaterThan(10_000);
 });
 
 /**
- * MapLibre picks tile levels from the zoom alone, and the print map sits at the
- * zoom of its scale, so the print style declares the terrain tiles smaller than
- * they are to get the finest ones: at 1:10 000 the DEM is read at z16 instead of
- * the z14 a 96 dpi view would settle for.
+ * MapLibre picks tile levels from the zoom alone, and the hill shading's map sits at the zoom of
+ * its scale, so the print style declares the terrain tiles smaller than they are to get the finest
+ * ones: at 1:10 000 the DEM is read at z16 instead of the z14 a 96 dpi view would settle for. The
+ * shading is the page's one image.
  */
-test('fetches tiles at the density of the paper, not of the screen', async ({page}) => {
+test('lays the hill shading over the map as an image of the terrain at paper density', async ({page}, testInfo) => {
   const zooms: number[] = [];
   await stubTiles(page, zooms);
   await openPrintPanel(page, 'h');
 
-  // Once the live map has its own tiles, only the print map's requests are left. Waited for on the
-  // network rather than the clock: the live map also loads basemap tiles now, at its own pace.
+  // Once the live map has its own tiles, only the print map's requests are left.
   await page.waitForLoadState('networkidle');
   zooms.length = 0;
-  await page.locator('.print-export').click();
+  const downloadPromise = page.waitForEvent('download', {timeout: 300_000});
+  await page.locator('.pdf-panel .print-export').click();
 
-  // A page holds around fifty terrain tiles; a dozen is enough to see which level
-  // they come from. The export is left to run on: compositing a 600 dpi page of
-  // shaded relief takes minutes in a headless browser and the zoom level – all
-  // this test is about – has been decided by now.
-  // Counted by level rather than in total: the live map may still be fetching its own z15 tiles
-  // on a busy machine, and those say nothing about the print.
+  // Counted by level rather than in total: the live map may still be fetching its own tiles on a
+  // busy machine, and those say nothing about the print.
   await expect.poll(() => zooms.filter((z) => z === 16).length, {timeout: 60_000}).toBeGreaterThan(12);
   expect(Math.max(...zooms)).toBe(16);
-});
 
-/**
- * The same for the orienteering map: whatever the scale, a page is drawn from the archive's
- * deepest level, the only one that carries form lines and knolls. The live map at this zoom reads
- * z14; the fixture's deepest level is z15.
- */
-test('draws the orienteering map from the deepest tiles', async ({page}) => {
-  await stubTiles(page);
-  await serveArchive(page);
-  await openPrintPanel(page, 'l');
-
-  await page.locator('.print-export').click();
-
-  const levels = () =>
-    page.evaluate(() =>
-      performance.getEntriesByName('mapant-print-tile').map((entry) => (entry as PerformanceMark).detail.z as number),
-    );
-  await expect.poll(async () => (await levels()).length, {timeout: 60_000}).toBeGreaterThan(12);
-  expect([...new Set(await levels())]).toEqual([15]);
+  const file = testInfo.outputPath('shaded.pdf');
+  await (await downloadPromise).saveAs(file);
+  const text = readFileSync(file).toString('latin1');
+  // 210 mm x 290 mm of shading at 200 dpi.
+  expect(text).toMatch(/\/Width 1654\b/);
+  expect(text).toMatch(/\/Height 2283\b/);
 });

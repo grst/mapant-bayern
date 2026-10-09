@@ -30,6 +30,20 @@ function geometryFilter(type: string): ExpressionSpecification | undefined {
   return undefined;
 }
 
+/**
+ * ISOM 520, "area that shall not be entered": the olive of private ground round buildings, which
+ * mapant-nf takes from OpenStreetMap. A visitor may want the map without it.
+ */
+export function isPrivateArea(isomCode: unknown): boolean {
+  return typeof isomCode === 'string' && isomCode.startsWith('520.');
+}
+
+/**
+ * The archive's `cliffs` table: the cliffs and boulders karttapullautin derives from the LiDAR,
+ * which can clutter steep ground. A visitor may want the map without them.
+ */
+export const CLIFFS_TABLE = 'cliffs';
+
 export interface IsomLayerOptions {
   /** The vector source holding the archive. */
   source: string;

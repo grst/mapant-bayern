@@ -2,8 +2,8 @@ import {decodeDrawings, encodeDrawings, type Drawing} from './drawings';
 import {detectLang, isLang, type Lang} from './i18n';
 
 /** Short codes for the optional layers, kept terse because they live in the URL. */
-export type LayerCode = 'h' | 'l' | 'g';
-export const LAYER_CODES: LayerCode[] = ['h', 'l', 'g'];
+export type LayerCode = 'h' | 'l' | 'p' | 'c';
+export const LAYER_CODES: LayerCode[] = ['h', 'l', 'p', 'c'];
 
 /**
  * The link counts zoom levels as OpenStreetMap does, in 256 px worlds -- one more than MapLibre's
@@ -14,7 +14,7 @@ const LINK_ZOOM_OFFSET = 1;
 
 /** All of Germany (map zoom), with the shading that says which states are mapped. */
 export const DEFAULT_VIEW = {zoom: 5.5, lat: 51.16, lon: 10.45};
-const DEFAULT_LAYERS: LayerCode[] = ['l'];
+const DEFAULT_LAYERS: LayerCode[] = ['l', 'p', 'c'];
 
 /** Browsers cope with far more, but a link this long is no longer shareable in practice. */
 const HASH_WARN_LENGTH = 8000;
