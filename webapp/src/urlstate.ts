@@ -2,8 +2,8 @@ import {decodeDrawings, encodeDrawings, type Drawing} from './drawings';
 import {detectLang, isLang, type Lang} from './i18n';
 
 /** Short codes for the optional layers, kept terse because they live in the URL. */
-export type LayerCode = 'h' | 'l' | 'g';
-export const LAYER_CODES: LayerCode[] = ['h', 'l', 'g'];
+export type LayerCode = 'h' | 'l';
+export const LAYER_CODES: LayerCode[] = ['h', 'l'];
 
 /**
  * The link counts zoom levels as OpenStreetMap does, in 256 px worlds -- one more than MapLibre's

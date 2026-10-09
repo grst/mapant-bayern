@@ -153,7 +153,7 @@ export async function fetchTile(z: number, x: number, y: number, signal?: AbortS
 /**
  * Whether a web-mercator tile lies wholly within mapped ground: inside an archive's bounds and its
  * zooms, and inside its state's outline -- the bounds alone would take in a neighbour's ground, as
- * the Allgäu test region's take in Austria. Where it does, the orienteering map's paper covers
+ * Bayern's take in Austria. Where it does, the orienteering map's paper covers
  * everything under it, and the basemap need not fetch the tile (basemap.ts).
  *
  * Errs towards false: a tile on a state's border, or anywhere the outlines cannot be read, is not

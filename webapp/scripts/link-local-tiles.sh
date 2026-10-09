@@ -14,10 +14,10 @@ find public/tiles -maxdepth 1 -name '*.pmtiles' -type l -delete
 for dir in "$pipeline"/*/; do
     state="$(basename "$dir")"
     case "$state" in
-        bayern) [ "${1:-}" = --no-bayern ] && continue; name=mapant-bayern.pmtiles ;;
+        bayern) [ "${1:-}" = --no-bayern ] && continue; name=mapant-bayern-v2.pmtiles ;;
         nordrhein-westfalen) name=mapant-nrw.pmtiles ;;
         common|docs) continue ;;
-        *) name="${state}.pmtiles" ;;
+        *) name="mapant-${state}.pmtiles" ;;
     esac
     # The newest run, if there are several test regions.
     newest="$(ls -t "$dir"results_*/map/mapant.pmtiles 2> /dev/null | head -n 1 || true)"

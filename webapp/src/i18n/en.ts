@@ -21,7 +21,6 @@ export const en = {
   'layers.toggle': 'Layers',
   'layers.hillshade': 'Hill shading',
   'layers.places': 'Town names',
-  'layers.grid': 'Tile grid',
 
   'draw.line': 'Measure distance',
   'draw.polygon': 'Measure area',

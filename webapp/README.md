@@ -89,8 +89,7 @@ federal state, read with HTTP range requests from an R2 bucket served at `mapant
   a fee, or not available (`status` in `src/states.ts`, following Jens Wiesehahn's
   [overview](https://wiesehahn.github.io/posts/lidar_availability/)), between the basemap's ground and its
   labels. Each state is labelled directly with its name and status, in the status colour and the
-  current language, in place of the basemap's own state names. A state with only a test region
-  rendered keeps its status; the test region's archive bounds are drawn as rendered on top.
+  current language, in place of the basemap's own state names.
 * The footer credits the LiDAR of each state whose archive the view touches.
 * The OCD export is georeferenced in the CRS of the state under the map centre (`crsAt()`):
   EPSG:25833 for Brandenburg, Sachsen and the other eastern states, EPSG:25832 elsewhere.
@@ -127,13 +126,13 @@ federal state, read with HTTP range requests from an R2 bucket served at `mapant
   app other than the bucket itself (the GitHub Pages domain, `localhost` during development).
 * **Local testing**: `npm run dev:local` links each state's newest mapant-nf result
   (`processing_pipeline/<state>/results_*/map/mapant.pmtiles`) into `public/tiles/` under the name
-  `src/states.ts` gives it (`scripts/link-local-tiles.sh`; Bavaria's is the Allgäu test region, which then stands
-  in for the published state -- `--no-bayern` keeps the published one) and starts the dev server with `VITE_MAPANT_LOCAL_TILES=/tiles/`:
+  `src/states.ts` gives it (`scripts/link-local-tiles.sh`; a local Bavarian result stands in for the
+  published state -- `--no-bayern` keeps the published one) and starts the dev server with `VITE_MAPANT_LOCAL_TILES=/tiles/`:
   each state's archive is read from there if it is there, and from the bucket otherwise. Vite's dev
   server answers range requests. The bucket's CORS rules admit `localhost:5173` and `:4173` only.
 * `VITE_MAPANT_TILES` replaces the bucket altogether, for a build pointed at another host.
-* A new state's archive goes into the bucket under the name in `src/states.ts` (`mapant-bayern.pmtiles`,
-  `mapant-nrw.pmtiles`, ...).
+* A new state's archive goes into the bucket under the name in `src/states.ts` (`mapant-bayern-v2.pmtiles`,
+  `mapant-nrw.pmtiles`, ...); a state only gets an `archive` there once its file is in the bucket.
 
 ## OCAD export
 
@@ -176,10 +175,8 @@ An A4 at 1:10 000 over this terrain is around 220 000 objects and 30 MB, written
 seconds; at 1:4000 it is 65 000 objects in under two. Two thirds of either is the cliff hatching,
 which karttapullautin draws as individual ticks.
 
-**The template's licence needs a decision before release.** It was exported from OpenOrienteering
-Mapper's ISOM 2017-2 symbol set, which is GPLv3, and this app is MIT. Replacing it with a symbol set
-of known provenance (one made in OCAD, say) is a drop-in change: it is fetched at runtime and
-nothing but the symbol numbers is assumed.
+The template was exported from OpenOrienteering Mapper's ISOM 2017-2 symbol set, which is GPLv3;
+so is this app (see [Licence](#licence)).
 
 ## Drawings in the share link
 
@@ -212,7 +209,7 @@ npm run fetch-places   # queries Overpass, rewrites public/places.geojson
 
 Commit the result – the build and the site never talk to Overpass. It covers the states that have a
 map archive (`MAPPED_STATES` in the script; keep it in step with `src/states.ts`) and is currently
-~21,000 places (2.7 MB, ~300 kB gzipped); if that ever gets too heavy, drop `village` from the query
+~14,000 places (1.8 MB); if that ever gets too heavy, drop `village` from the query
 in `scripts/fetch-places.mjs`.
 
 ## Deployment notes
@@ -220,3 +217,9 @@ in `scripts/fetch-places.mjs`.
 Pages must be configured once in the repository settings: **Source = GitHub Actions**, and
 **Custom domain = mapant.orienteering-allgaeu.de** with a `mapant` CNAME record pointing at
 `grst.github.io.` in DNS.
+
+## Licence
+
+The webapp is licensed under the [GNU General Public License v3.0 or later](LICENSE), as the OCAD
+template it ships (`public/templates/isom2017-2_10000.ocd`) comes from OpenOrienteering Mapper's
+GPLv3 symbol set. The rest of the repository is MIT (`../LICENSE`); the map data is CC-BY-NC 4.0.

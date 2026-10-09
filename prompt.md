@@ -61,7 +61,23 @@ removed once completed.
 
 --------------------------------------------------------------------------------
 
-Let's work on improving the webapp.
+Let's prepare the webapp for production.
+
+As a first step, check what can be cleaned up. Remove any leftovers from
+debugging and testing.
+
+The following maps are now available:
+
+- https://mapant-tiles.orienteering-allgaeu.de/mapant-berlin.pmtiles
+- https://mapant-tiles.orienteering-allgaeu.de/mapant-nrw.pmtiles
+- https://mapant-tiles.orienteering-allgaeu.de/mapant-saarland.pmtiles
+
+Additionall mapant-bayern-v2.pmtiles is being uploaded.
+
+--------------------------------------------------------------------------------
+
+Let's work on improving the webapp. At this point, don't make any more
+modifications to karttapullautin or the mapant-nf pipeline.
 
 ## Map viewer
 

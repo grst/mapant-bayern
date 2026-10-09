@@ -70,7 +70,6 @@ export function createMap(
   map.getContainer().addEventListener('focus', () => map.getCanvas().focus());
   map.touchZoomRotate.disableRotation();
   map.keyboard.disableRotation();
-  map.showTileBoundaries = visible.grid;
   provideIsomIcons(map, rasterizeIsomIcons(window.devicePixelRatio));
 
   map.addControl(new NavigationControl({showCompass: false}), 'top-left');
@@ -116,12 +115,9 @@ export function createMap(
         return;
       }
       visible[layer] = value;
-      const styleLayer = OPTIONAL_STYLE_LAYERS[layer];
-      if (styleLayer) {
-        whenStyleReady(() => map.setLayoutProperty(styleLayer, 'visibility', visible[layer] ? 'visible' : 'none'));
-      } else if (layer === 'grid') {
-        map.showTileBoundaries = value;
-      }
+      whenStyleReady(() =>
+        map.setLayoutProperty(OPTIONAL_STYLE_LAYERS[layer], 'visibility', visible[layer] ? 'visible' : 'none'),
+      );
       updateAttribution();
       listeners.forEach((listener) => listener());
     },

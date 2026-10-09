@@ -31,10 +31,10 @@ import {showToast} from './ui/toast';
 import {crsAt} from './states';
 
 /** The layers the share link can switch, by their code in it. */
-const LAYER_BY_CODE: Record<LayerCode, OptionalLayer> = {h: 'hillshade', l: 'places', g: 'grid'};
+const LAYER_BY_CODE: Record<LayerCode, OptionalLayer> = {h: 'hillshade', l: 'places'};
 
 function visibilityOf(codes: Set<LayerCode>): Visibility {
-  return {hillshade: codes.has('h'), places: codes.has('l'), grid: codes.has('g')};
+  return {hillshade: codes.has('h'), places: codes.has('l')};
 }
 
 const initialState = readState();
@@ -49,7 +49,6 @@ const toggles: LayerToggle[] = (
   [
     ['h', 'layers.hillshade'],
     ['l', 'layers.places'],
-    ['g', 'layers.grid'],
   ] as const
 ).map(([code, labelKey]) => ({
   code,
@@ -152,7 +151,6 @@ map.addControl(
             ...settings,
             center: viewCenter(),
             style: createStyle({visible, print: true, drawings, drawingLabels: labels}),
-            showTileBoundaries: visible.grid,
             // The notices of what is on the page, which is at the orienteering map's zooms.
             attribution: attributionText(
               MAP_MIN_ZOOM,

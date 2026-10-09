@@ -148,7 +148,6 @@ export interface PrintRequest {
   center: XY;
   /** The style for the print map: the live map's, reading the deepest tiles. */
   style: StyleSpecification;
-  showTileBoundaries: boolean;
   /** Plain-text copyright notices for the footer. */
   attribution: string;
   fileName: string;
@@ -207,7 +206,6 @@ export async function exportPdf(request: PrintRequest): Promise<void> {
     canvasContextAttributes: {preserveDrawingBuffer: true, antialias: true},
   });
   provideIsomIcons(map, icons);
-  map.showTileBoundaries = request.showTileBoundaries;
 
   try {
     await renderComplete(map);

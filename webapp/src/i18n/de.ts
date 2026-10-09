@@ -23,7 +23,6 @@ export const de: Record<Key, string> = {
   'layers.toggle': 'Ebenen',
   'layers.hillshade': 'Schummerung',
   'layers.places': 'Ortsnamen',
-  'layers.grid': 'Kachelraster',
 
   'draw.line': 'Strecke messen',
   'draw.polygon': 'Fläche messen',

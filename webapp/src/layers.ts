@@ -75,13 +75,13 @@ const MAPANT_ATTRIBUTION =
 const MAPTERHORN_ATTRIBUTION =
   '© <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>';
 
-/** The layers a visitor can switch on and off. The tile grid is not a layer but a debug view. */
-export type OptionalLayer = 'hillshade' | 'places' | 'grid';
+/** The layers a visitor can switch on and off. */
+export type OptionalLayer = 'hillshade' | 'places';
 
 export type Visibility = Record<OptionalLayer, boolean>;
 
 /** Style layers behind each switchable layer. */
-export const OPTIONAL_STYLE_LAYERS: Partial<Record<OptionalLayer, string>> = {
+export const OPTIONAL_STYLE_LAYERS: Record<OptionalLayer, string> = {
   hillshade: 'hillshade',
   places: 'places',
 };
@@ -122,7 +122,6 @@ export function createStyle(options: StyleOptions): StyleSpecification {
         },
     states: geojson(STATES_URL),
     'state-labels': geojson(STATE_LABELS_URL),
-    'rendered-areas': geojson(renderedAreas()),
     dem: {
       type: 'raster-dem',
       tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
@@ -175,8 +174,7 @@ export function createStyle(options: StyleOptions): StyleSpecification {
 
 /**
  * What each state publishes of its LiDAR, as a tint over the basemap below the orienteering map's
- * zooms: rendered, free, against a fee, or not at all (states.ts). Areas rendered in a state that
- * is not -- a test region -- are drawn as rendered on top.
+ * zooms: rendered, free, against a fee, or not at all (states.ts).
  */
 function stateLayers(): LayerSpecification[] {
   const statusOf = ['match', ['get', 'id'], ...STATES.flatMap((s) => [s.id, s.status]), 'none'];
@@ -193,13 +191,6 @@ function stateLayers(): LayerSpecification[] {
       source: 'states',
       maxzoom: MAP_MIN_ZOOM,
       paint: {'fill-color': color, 'fill-opacity': 0.32},
-    },
-    {
-      id: 'rendered-areas-fill',
-      type: 'fill',
-      source: 'rendered-areas',
-      maxzoom: MAP_MIN_ZOOM,
-      paint: {'fill-color': STATUS_COLORS.rendered, 'fill-opacity': 0.6},
     },
     {
       id: 'states-outline',
@@ -267,24 +258,6 @@ function stateLabelLayer(): LayerSpecification {
       'text-halo-width': 2,
       'text-halo-blur': 0.5,
     },
-  };
-}
-
-/** The bounds of the archives of states not rendered as a whole: test regions, for now. */
-function renderedAreas(): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: ARCHIVES.filter((a) => a.state.status !== 'rendered').map(({state, info}) => {
-      const [west, south, east, north] = info.bounds;
-      return {
-        type: 'Feature',
-        properties: {id: state.id},
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
-        },
-      };
-    }),
   };
 }
 
