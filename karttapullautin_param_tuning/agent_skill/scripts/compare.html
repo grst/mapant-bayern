@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parameter set viewer</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/pmtiles.js"></script>
+<style>
+  :root { --bg: #fff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --panel: rgba(255,255,255,.94); --accent: #b0006e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #1b1b1d; --fg: #ececf0; --muted: #a0a0a8; --line: #3a3a3f; --panel: rgba(30,30,33,.94); --accent: #ff5cb8; }
+  }
+  :root[data-theme="dark"] { --bg: #1b1b1d; --fg: #ececf0; --muted: #a0a0a8; --line: #3a3a3f; --panel: rgba(30,30,33,.94); --accent: #ff5cb8; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  #bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  #bar label { display: inline-flex; gap: 4px; align-items: center; }
+  select, button { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; max-width: 100%; }
+  #maps { position: absolute; top: var(--bar-h, 40px); bottom: 0; left: 0; right: 0; display: flex; }
+  .pane { position: relative; flex: 1; min-width: 0; border-left: 1px solid var(--line); }
+  .pane:first-child { border-left: 0; }
+  .map { position: absolute; inset: 0; }
+  .ctl { position: absolute; top: 8px; left: 8px; z-index: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+         padding: 6px 8px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 6px; align-items: center; max-width: calc(100% - 60px); }
+  .ctl b { grid-column: 1 / -1; font-size: 12px; }
+  .ctl span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .single #paneB { display: none; }
+  #params { position: absolute; right: 8px; bottom: 28px; z-index: 3; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+            padding: 8px; max-height: 60%; overflow: auto; display: none; max-width: calc(100% - 16px); }
+  #params table { border-collapse: collapse; font-size: 12px; }
+  #params td, #params th { padding: 1px 6px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  #params .diff { color: var(--accent); font-weight: 600; }
+  #zoomhint { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 4; display: none;
+              background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  .note { color: var(--muted); }
+  .key i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 3px 0 6px; }
+  @media (max-width: 700px) { #maps { flex-direction: column; } .pane { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div id="bar">
+  <strong id="title">parameter sets</strong>
+  <label>Area <select id="region"></select></label>
+  <label>View <select id="mode"><option value="split">two maps side by side</option><option value="single">one map</option></select></label>
+  <label><input type="checkbox" id="outline" checked> group outline</label>
+  <label><input type="checkbox" id="osm"> OSM below the map</label>
+  <button id="paramsBtn">parameters</button>
+  <span class="key note" id="key"></span>
+</div>
+<div id="maps">
+  <div class="pane" id="paneA"><div class="map" id="mapA"></div><div class="ctl" id="ctlA"></div></div>
+  <div class="pane" id="paneB"><div class="map" id="mapB"></div><div class="ctl" id="ctlB"></div></div>
+</div>
+<div id="params"></div>
+<div id="zoomhint">Zoom in to see the map (it starts at zoom 12).</div>
+<script>
+// Layers that differ between parameter sets; everything else (contours, knolls, cliffs) is `base`.
+const SET_LAYERS = new Set(['yellow', 'vegetation', 'undergrowth']);
+const COLORS = ['#e0007a', '#0070e0', '#e08a00', '#00a070', '#7a40d0', '#606060'];
+const base = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol('pmtiles', protocol.tile);
+const archives = {};
+function archive(path) {
+  if (!archives[path]) { archives[path] = new pmtiles.PMTiles(base + path); protocol.add(archives[path]); }
+  return 'pmtiles://' + archives[path].source.getKey();
+}
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('kpt-compare:' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('kpt-compare:' + k, JSON.stringify(v)); } catch (e) {} }
+};
+let M, styles = {}, region, firstLoad = true;
+const panes = {A: {sel: {}}, B: {sel: {}}};
+window.panes = panes;  // for scripted screenshots
+
+function setBarHeight() { document.documentElement.style.setProperty('--bar-h', document.getElementById('bar').offsetHeight + 'px'); }
+window.addEventListener('resize', setBarHeight);
+function option(sel, value, text) { const o = document.createElement('option'); o.value = value; o.textContent = text; sel.appendChild(o); }
+const groups = () => Object.keys(M.groups);
+
+function buildStyle(tpl, choice) {
+  const s = JSON.parse(JSON.stringify(tpl));
+  const files = new Set(M.regions[region].files);
+  s.sources = {base: {type: 'vector', url: archive(`data/${region}/base.pmtiles`)}};
+  const src = [];
+  for (const g of groups()) {
+    const f = `g${g}__${choice[g]}.pmtiles`;
+    if (files.has(f)) { s.sources['g' + g] = {type: 'vector', url: archive(`data/${region}/${f}`)}; src.push([g, choice[g]]); }
+  }
+  s.sources.outline = {type: 'geojson', data: `data/${region}/outline.geojson`};
+  s.sources.osm = {type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19,
+                   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'};
+  s.sprite = base + `data/${region}/sprite`;
+  const layers = [];
+  for (const l of s.layers) {
+    if (l.source !== 'mapant') { layers.push(l); continue; }
+    if (SET_LAYERS.has(l['source-layer'])) {
+      for (const [g, set] of src) {
+        const c = JSON.parse(JSON.stringify(l));
+        c.id = `${l.id}@${g}`; c.source = 'g' + g;
+        if (l['source-layer'] === 'vegetation') {
+          const col = M.sets[set].colors;
+          c.paint['fill-color'] = ['match', ['get', 'isom'], '406', col['green-406'], '408', col['green-408'], '410', col['green-410'], col['green-default']];
+        }
+        layers.push(c);
+      }
+    } else if (!['osm_areas', 'osm_lines'].includes(l['source-layer'])) {
+      l.source = 'base'; layers.push(l);
+    }
+  }
+  layers.splice(1, 0, {id: 'osm-background', type: 'raster', source: 'osm',
+                       layout: {visibility: document.getElementById('osm').checked ? 'visible' : 'none'}});
+  const match = ['match', ['get', 'group']];
+  groups().forEach((g, i) => match.push(g, COLORS[i % COLORS.length]));
+  match.push('#606060');
+  layers.push({id: 'outline', type: 'line', source: 'outline',
+               layout: {visibility: document.getElementById('outline').checked ? 'visible' : 'none'},
+               paint: {'line-width': 2.5, 'line-opacity': 0.85, 'line-dasharray': [3, 2], 'line-color': match}});
+  s.layers = layers;
+  return s;
+}
+
+function selection(p) { const o = {}; for (const g of groups()) o[g] = panes[p].sel[g].value; return o; }
+
+function applyPane(p) {
+  const P = panes[p], c = selection(p);
+  const i = M.presets.findIndex(x => groups().every(g => (x.sets[g] || 'kp_default') === c[g]));
+  P.preset.value = i >= 0 ? String(i) : 'custom';
+  store.set('sel' + p, c);
+  P.map.setStyle(buildStyle(styles[region], c), {diff: false});
+  renderParams();
+}
+
+function makeControls(p, defPreset) {
+  const P = panes[p], ctl = document.getElementById('ctl' + p);
+  ctl.innerHTML = `<b>${p === 'A' ? 'Left' : 'Right'} map</b><span>preset</span><select data-k="preset"></select>` +
+    groups().map(g => `<span>${M.groups[g].label}</span><select data-k="${g}"></select>`).join('');
+  P.preset = ctl.querySelector('[data-k="preset"]');
+  M.presets.forEach((x, i) => option(P.preset, String(i), x.label));
+  option(P.preset, 'custom', '(custom)');
+  const saved = store.get('sel' + p, {}), d = M.presets[defPreset] || M.presets[0] || {sets: {}};
+  for (const g of groups()) {
+    const s = P.sel[g] = ctl.querySelector(`[data-k="${CSS.escape(g)}"]`);
+    for (const n of M.groups[g].sets) if (M.sets[n]) option(s, n, `${n} — ${M.sets[n].label}`);
+    s.value = M.sets[saved[g]] && M.groups[g].sets.includes(saved[g]) ? saved[g] : (d.sets[g] || M.groups[g].sets[0]);
+    s.onchange = () => applyPane(p);
+  }
+  P.preset.onchange = () => {
+    if (P.preset.value === 'custom') return;
+    const x = M.presets[+P.preset.value];
+    for (const g of groups()) if (x.sets[g]) P.sel[g].value = x.sets[g];
+    applyPane(p);
+  };
+}
+
+function renderParams() {
+  const el = document.getElementById('params'), cols = [];
+  for (const p of (document.body.classList.contains('single') ? ['A'] : ['A', 'B'])) {
+    const c = selection(p);
+    for (const g of groups()) cols.push([`${p === 'A' ? 'left' : 'right'} · ${M.groups[g].label}`, c[g]]);
+  }
+  const keys = [...new Set(cols.flatMap(([, s]) => Object.keys(M.sets[s].params)))].sort();
+  let h = '<table><tr><th>parameter</th>' + cols.map(([t, s]) => `<th>${t}<br><span class="note">${s}</span></th>`).join('') + '</tr>';
+  for (const k of keys) {
+    const vals = cols.map(([, s]) => M.sets[s].params[k] ?? 'default');
+    h += `<tr><td class="${new Set(vals).size > 1 ? 'diff' : ''}">${k}</td>` + vals.map(v => `<td>${v}</td>`).join('') + '</tr>';
+  }
+  el.innerHTML = h + '</table><p class="note">Keys a set leaves out take karttapullautin’s default. Highlighted: keys that differ.</p>';
+}
+
+function syncMaps() {
+  let busy = false;
+  const link = (a, b) => a.on('move', () => {
+    if (busy || document.body.classList.contains('single')) return;
+    busy = true; b.jumpTo({center: a.getCenter(), zoom: a.getZoom(), bearing: a.getBearing(), pitch: a.getPitch()}); busy = false;
+  });
+  link(panes.A.map, panes.B.map); link(panes.B.map, panes.A.map);
+}
+
+async function loadRegion(name) {
+  region = name; store.set('region', name);
+  if (!styles[name]) styles[name] = await (await fetch(`data/${name}/style.json`)).json();
+  const [w, s, e, n] = M.regions[name].bounds;
+  for (const p of ['A', 'B']) {
+    const P = panes[p], style = buildStyle(styles[name], selection(p));
+    if (!P.map) {
+      P.map = new maplibregl.Map({container: 'map' + p, style, bounds: [w, s, e, n], maxZoom: 21, minZoom: 8, hash: p === 'A', attributionControl: {compact: true}});
+      P.map.addControl(new maplibregl.NavigationControl({showCompass: false}), 'top-right');
+      P.map.addControl(new maplibregl.ScaleControl({maxWidth: 120}), 'bottom-left');
+    } else {
+      P.map.setStyle(style, {diff: false});
+    }
+  }
+  // the tiles start at z12 (as in production): open at the area's start view, unless a
+  // #zoom/lat/lon link already points inside the area
+  const st = M.regions[name].start, A0 = panes.A.map, c0 = A0.getCenter();
+  const inside = c0.lng > w && c0.lng < e && c0.lat > s && c0.lat < n && A0.getZoom() >= 12;
+  if (st && !(firstLoad && inside)) A0.jumpTo({center: [st[0], st[1]], zoom: st[2]});
+  firstLoad = false;
+  const align = () => panes.B.map.jumpTo({center: A0.getCenter(), zoom: A0.getZoom(), bearing: A0.getBearing()});
+  if (A0.loaded()) align(); else A0.once('load', align);
+  renderParams();
+}
+
+(async () => {
+  M = await (await fetch('manifest.json')).json();
+  document.getElementById('title').textContent = M.title;
+  document.title = M.title;
+  document.getElementById('key').innerHTML = groups().map((g, i) => `<i style="background:${COLORS[i % COLORS.length]}"></i>${M.groups[g].label}`).join(' ');
+  const rs = document.getElementById('region');
+  for (const r of Object.keys(M.regions)) option(rs, r, `${r} (${Object.entries(M.regions[r].tiles).map(([g, n]) => `${n} ${M.groups[g] ? M.groups[g].label : g}`).join(' + ')})`);
+  const hp = location.hash.slice(1).split('/').map(Number);
+  const byHash = hp.length >= 3 && Object.keys(M.regions).find(r => {
+    const [w, s, e, n] = M.regions[r].bounds; return hp[2] > w && hp[2] < e && hp[1] > s && hp[1] < n;
+  });
+  const want = byHash || store.get('region', Object.keys(M.regions)[0]);
+  rs.value = M.regions[want] ? want : Object.keys(M.regions)[0];
+  makeControls('A', 0);
+  makeControls('B', Math.min(1, M.presets.length - 1));
+  const mode = document.getElementById('mode');
+  mode.value = store.get('mode', 'split');
+  document.body.classList.toggle('single', mode.value === 'single');
+  setBarHeight();
+  await loadRegion(rs.value);
+  syncMaps();
+  const hint = () => { document.getElementById('zoomhint').style.display = panes.A.map.getZoom() < 12 ? 'block' : 'none'; };
+  panes.A.map.on('zoomend', hint); panes.A.map.on('load', hint); hint();
+  rs.onchange = () => loadRegion(rs.value);
+  mode.onchange = () => {
+    store.set('mode', mode.value);
+    document.body.classList.toggle('single', mode.value === 'single');
+    for (const p of ['A', 'B']) panes[p].map.resize();
+    if (mode.value === 'split') panes.B.map.jumpTo({center: panes.A.map.getCenter(), zoom: panes.A.map.getZoom()});
+    renderParams();
+  };
+  for (const [id, layer] of [['outline', 'outline'], ['osm', 'osm-background']]) {
+    document.getElementById(id).onchange = e => {
+      for (const p of ['A', 'B']) if (panes[p].map.getLayer(layer)) panes[p].map.setLayoutProperty(layer, 'visibility', e.target.checked ? 'visible' : 'none');
+    };
+  }
+  document.getElementById('paramsBtn').onclick = () => {
+    const el = document.getElementById('params'); el.style.display = el.style.display === 'block' ? 'none' : 'block';
+  };
+})();
+</script>
+</body>
+</html>

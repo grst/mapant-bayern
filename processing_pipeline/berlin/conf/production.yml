@@ -1,0 +1,32 @@
+# The full production run over Berlin: every tile in input/laz_tiles.local.csv, no region_bbox.
+# Bavaria's production settings (../bayern/conf/production.yml); sizing comes from the -c config
+# in run_prod.sh.
+#
+# 1,066 x 1 km (.laz, 61.5 GiB), EPSG:25833, served from the local mirror (see ../README.md).
+
+tiles_csv: input/laz_tiles.local.csv
+osm_pbf: input/berlin-latest.osm.pbf
+
+# The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
+# state has had a parameter sweep of its own.
+pullauta_ini: ../bayern/conf/pullauta.bayern.ini
+vectorconf: ../bayern/conf/osm.txt
+
+download_jobs: 1
+download_limit_rate: '200M'
+
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+grid_size: 16
+pullauta_processes: 6
+
+osm_chunk_size: 1
+
+attribution: 'LiDAR &copy; <a href="https://gdi.berlin.de">Geoportal Berlin / Airborne Laserscanning (ALS)</a>, dl-de/zero-2-0'
+publish_mode: link
+
+map_title: 'mapant -- Berlin'
+outdir: /scratch/mapant/berlin

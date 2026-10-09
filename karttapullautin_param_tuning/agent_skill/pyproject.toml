@@ -1,0 +1,12 @@
+[project]
+name = "kp-tuning"
+version = "0.1.0"
+description = "Tune karttapullautin's vegetation/open-land parameters for a LiDAR region against real orienteering maps"
+requires-python = ">=3.12"
+license = "GPL-3.0-or-later"
+dependencies = [
+  "numpy", "scipy", "pandas", "pyarrow", "shapely>=2", "pyproj", "rasterio", "pillow", "affine",
+  "scikit-image", "laspy[lazrs]", "optuna", "matplotlib", "requests", "pyyaml", "mercantile",
+]
+[tool.uv]
+package = false

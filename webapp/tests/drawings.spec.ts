@@ -1,46 +1,36 @@
 import {expect, test} from '@playwright/test';
-import Polygon from 'ol/geom/Polygon.js';
-import LineString from 'ol/geom/LineString.js';
-import {getArea, getLength} from 'ol/sphere.js';
-import {
-  closeRing,
-  decodeDrawings,
-  encodeDrawings,
-  fromShareCoordinate,
-  snapToShareGrid,
-  toShareCoordinate,
-  type Drawing,
-} from '../src/drawings';
+import {closeRing, decodeDrawings, encodeDrawings, snapToShareGrid, type Drawing} from '../src/drawings';
+import {distance, lineLength, ringArea, type LonLat} from '../src/geo';
 
-/** Raw map coordinates, as they come out of a mouse-drawn geometry. */
-const DRAWN = [
-  [1137412.3419283, 6042318.9284712],
-  [1139887.7712389, 6043102.1129384],
-  [1138204.9917253, 6040091.4471933],
+/** Raw lon/lat, as they come out of a mouse-drawn geometry. */
+const DRAWN: LonLat[] = [
+  [10.217531128462, 47.563218476129],
+  [10.239765112398, 47.568002917734],
+  [10.224648229351, 47.549716338402],
 ];
 
 /** What the app stores in the drawing layer once a sketch is finished. */
 const SNAPPED = DRAWN.map(snapToShareGrid);
 
-function roundTrip(drawing: Drawing): number[][] {
+function roundTrip(drawing: Drawing): LonLat[] {
   const restored = decodeDrawings(encodeDrawings([drawing]));
   expect(restored).toHaveLength(1);
-  return restored[0].c.map(fromShareCoordinate);
+  return restored[0].c;
 }
 
 test('a share link reproduces a polygon exactly, area included', () => {
-  const restored = roundTrip({t: 'p', c: SNAPPED.map(toShareCoordinate)});
+  const restored = roundTrip({t: 'p', c: SNAPPED});
 
   expect(restored).toEqual(SNAPPED);
-  const area = (coordinates: number[][]) => getArea(new Polygon([closeRing(coordinates)]));
+  const area = (coordinates: LonLat[]) => ringArea(closeRing(coordinates) as LonLat[]);
   expect(area(restored)).toBe(area(SNAPPED));
 });
 
 test('a share link reproduces a line exactly, length included', () => {
-  const restored = roundTrip({t: 'l', c: SNAPPED.map(toShareCoordinate)});
+  const restored = roundTrip({t: 'l', c: SNAPPED});
 
   expect(restored).toEqual(SNAPPED);
-  const length = (coordinates: number[][]) => getLength(new LineString(coordinates));
+  const length = (coordinates: LonLat[]) => lineLength(coordinates);
   expect(length(restored)).toBe(length(SNAPPED));
 });
 
@@ -52,8 +42,7 @@ test('snapping stays put once applied', () => {
 
 test('snapping a drawing moves it by less than a decimetre', () => {
   for (const [index, coordinate] of DRAWN.entries()) {
-    const snapped = SNAPPED[index];
-    expect(Math.hypot(snapped[0] - coordinate[0], snapped[1] - coordinate[1])).toBeLessThan(0.1);
+    expect(distance(SNAPPED[index], coordinate)).toBeLessThan(0.1);
   }
 });
 

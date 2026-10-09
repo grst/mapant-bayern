@@ -1,32 +1,20 @@
-/* OpenLayers' own stylesheet first: everything below overrides it, and
+/* MapLibre's own stylesheet first: everything below overrides it, and
    bundling it here keeps that order in the production build too. */
-@import 'ol/ol.css';
+@import 'maplibre-gl/dist/maplibre-gl.css';
 
-/* The OpenLayers attribution control renders into the footer, so it has to
-   shed its floating-panel styling. */
-.footer .ol-attribution {
-  position: static;
-  max-width: none;
-  padding: 0;
-  border-radius: 0;
-  background: none;
-  font-size: inherit;
-}
-
-.footer .ol-attribution ul {
+/* The copyright notices of what is on screen, written into the footer by map.ts. */
+.footer .attribution ul {
   display: inline;
   margin: 0;
   padding: 0;
-  color: inherit;
-  font-size: inherit;
-  text-shadow: none;
+  list-style: none;
 }
 
-.footer .ol-attribution li {
+.footer .attribution li {
   display: inline;
 }
 
-.footer .ol-attribution li:not(:last-child)::after {
+.footer .attribution li:not(:last-child)::after {
   margin: 0 0.3rem;
   color: var(--border);
   content: "|";
@@ -34,35 +22,32 @@
 
 /* ------------------------------------------------------- map controls */
 
-.ol-control button {
+.maplibregl-map {
   font-family: var(--font);
 }
 
-.ol-scale-line {
-  left: auto;
-  right: 0.5rem;
-  bottom: 0.5rem;
-  background: rgb(255 255 255 / 70%);
+.maplibregl-ctrl button {
+  font-family: var(--font);
 }
 
-.ol-scale-line-inner {
-  color: var(--fg);
+.maplibregl-ctrl-scale {
   border-color: var(--fg);
+  background: rgb(255 255 255 / 70%);
+  color: var(--fg);
 }
 
-/* Full screen, layers and share share one column in the top right corner. */
-.map-control-stack {
-  top: 0.5em;
-  right: 0.5em;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: none;
-  padding: 0;
+.maplibregl-ctrl-top-right .maplibregl-ctrl,
+.maplibregl-ctrl-top-left .maplibregl-ctrl {
+  margin: 0.5rem 0.5rem 0;
 }
 
-.map-control-stack .ol-control {
-  position: static;
+.maplibregl-ctrl-top-right .maplibregl-ctrl + .maplibregl-ctrl {
+  margin-top: 4px;
+}
+
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl,
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl {
+  margin: 0 0.5rem 0.5rem;
 }
 
 .layer-panel {
@@ -75,7 +60,7 @@
   right: calc(2rem + 4px + 0.4rem);
   padding: 0.5rem 0.7rem;
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--panel-bg);
   box-shadow: var(--shadow);
   font-size: 0.85rem;
   white-space: nowrap;
@@ -98,17 +83,20 @@
   position: relative;
 }
 
-/* The selectors below are scoped through .print-panel throughout: ol.css styles
-   every `.ol-control button` as a square icon button, which would otherwise win
-   on specificity and squash the form controls. */
+/* The selectors below are scoped through .print-panel throughout: MapLibre styles
+   every `.maplibregl-ctrl-group button` as a square icon button, which would
+   otherwise win on specificity and squash the form controls. */
 .print-panel-body {
   position: absolute;
   top: 0;
   right: calc(2rem + 4px + 0.4rem);
   width: 17rem;
+  /* The OCD panel is tall; on a phone it scrolls rather than running off the map. */
+  max-height: calc(100dvh - var(--navbar-height) - 6rem);
+  overflow-y: auto;
   padding: 0.6rem 0.75rem 0.75rem;
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--panel-bg);
   box-shadow: var(--shadow);
   font-size: 0.85rem;
 }
@@ -182,6 +170,43 @@
   cursor: pointer;
 }
 
+/* What goes into an OCD file: the feature groups, as objects and as a background map. */
+.ocd-field {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocd-field legend,
+.ocd-field summary {
+  padding: 0;
+  font-weight: 600;
+}
+
+.ocd-field summary {
+  cursor: pointer;
+}
+
+.ocd-background {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.ocd-groups h3 {
+  margin: 0.35rem 0 0.1rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ocd-groups label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.1rem 0;
+  cursor: pointer;
+}
+
 .print-panel .print-export[disabled] {
   opacity: 0.6;
   cursor: progress;
@@ -199,14 +224,21 @@
 }
 
 .draw-toolbar {
-  bottom: 0.5rem;
-  left: 0.5rem;
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
-.draw-toolbar button[aria-pressed="true"] {
+.draw-toolbar .tool-button {
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 10%);
+  cursor: pointer;
+}
+
+.draw-toolbar .tool-button[aria-pressed="true"] {
   background: var(--accent);
+  color: var(--accent-fg);
 }
 
 .draw-hint {
@@ -231,16 +263,14 @@
   pointer-events: none;
 }
 
-/* Bigger than the OpenLayers defaults, which are hard to hit on a phone and easy
-   to miss on a busy orienteering map. Sized in rem, not em, so changing the font
-   size below only scales the glyph the full-screen and zoom controls draw as
-   text – not the button box. */
-.ol-control button.tool-button,
-.map-control-stack .ol-full-screen button,
-.ol-zoom button {
+/* Bigger than the MapLibre defaults, which are hard to hit on a phone and easy
+   to miss on a busy orienteering map. */
+.maplibregl-ctrl-group button,
+.maplibregl-ctrl button.tool-button {
   width: 2rem;
   height: 2rem;
-  font-size: 1.25rem;
+  padding: 0;
+  color: var(--fg);
 }
 
 .control-icon {
@@ -254,3 +284,4 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+

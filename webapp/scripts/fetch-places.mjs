@@ -13,18 +13,20 @@ import {dirname, join} from 'node:path';
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const OUTPUT = join(dirname(import.meta.dirname), 'public', 'places.geojson');
 
-// Bavaria, by its OSM administrative relation (de:regionalschluessel 09 = Bayern).
+// The states with a map archive (`archive` in src/states.ts), by their OSM administrative relations:
+// the names are drawn only at the orienteering map's zooms, so elsewhere they would never be seen.
+const MAPPED_STATES = ['DE-BY', 'DE-NW', 'DE-BE', 'DE-SL'];
 const QUERY = `
 [out:json][timeout:300];
-area["ISO3166-2"="DE-BY"]["admin_level"="4"]->.bavaria;
-node["place"~"^(city|town|village)$"]["name"](area.bavaria);
+area["ISO3166-2"~"^(${MAPPED_STATES.join('|')})$"]["admin_level"="4"]->.mapped;
+node["place"~"^(city|town|village)$"]["name"](area.mapped);
 out body;
 `;
 
 const response = await fetch(OVERPASS_URL, {
   method: 'POST',
   // Overpass answers 406 without a real User-Agent.
-  headers: {'User-Agent': 'mapant-bayern/1.0 (https://github.com/grst/mapant-bayern)'},
+  headers: {'User-Agent': 'mapant-germany/1.0 (https://github.com/grst/mapant-germany)'},
   body: new URLSearchParams({data: QUERY}),
 });
 

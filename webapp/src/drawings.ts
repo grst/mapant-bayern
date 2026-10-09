@@ -1,6 +1,4 @@
 import {deflateSync, inflateSync, strFromU8, strToU8} from 'fflate';
-// Explicit .js: this module is also imported outside the bundler, by the tests.
-import {fromLonLat, toLonLat} from 'ol/proj.js';
 
 /** 'l' = line string, 'p' = polygon (outer ring only). */
 export type DrawingType = 'l' | 'p';
@@ -18,24 +16,13 @@ export interface Drawing {
  */
 const DECIMALS = 6;
 
-/** Map coordinate (EPSG:3857) -> the rounded lon/lat pair stored in the URL. */
-export function toShareCoordinate(coordinate: number[]): [number, number] {
-  const [lon, lat] = toLonLat(coordinate);
-  return [round(lon), round(lat)];
-}
-
-/** The inverse: a stored lon/lat pair -> map coordinate. */
-export function fromShareCoordinate(pair: number[]): number[] {
-  return fromLonLat(pair);
-}
-
 /**
- * Snaps a map coordinate onto the share grid. Finished drawings are snapped
- * immediately, so the length or area shown on screen is exactly the one a shared
- * link reproduces – rounding on the way out would otherwise change it slightly.
+ * Snaps a lon/lat pair onto the share grid. Finished drawings are snapped immediately, so the
+ * length or area shown on screen is exactly the one a shared link reproduces – rounding on the way
+ * out would otherwise change it slightly.
  */
-export function snapToShareGrid(coordinate: number[]): number[] {
-  return fromShareCoordinate(toShareCoordinate(coordinate));
+export function snapToShareGrid([lon, lat]: number[]): [number, number] {
+  return [round(lon), round(lat)];
 }
 
 function round(value: number): number {

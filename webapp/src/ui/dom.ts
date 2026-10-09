@@ -14,13 +14,18 @@ const ICONS = {
     '<polyline points="7 9 7 3 17 3 17 9"/>' +
     '<path d="M7 17H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-3"/>' +
     '<rect x="7" y="14" width="10" height="7"/>',
+  // A sheet with its corner folded, and the format's name across it.
+  ocd:
+    '<path d="M5 9V3h9l5 5v1"/><polyline points="14 3 14 8 19 8"/>' +
+    '<text x="12" y="20.5" text-anchor="middle" font-size="9.5" font-weight="700" letter-spacing="-0.3" ' +
+    'font-family="system-ui, sans-serif" fill="currentColor" stroke="none">OCD</text>',
   undo: '<polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
   trash: '<polyline points="3 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V3h6v3"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;
 
-/** A button styled like OpenLayers' own controls, labelled from the i18n tables. */
+/** A button styled like MapLibre's own controls, labelled from the i18n tables. */
 export function controlButton(icon: IconName, titleKey: Key): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';

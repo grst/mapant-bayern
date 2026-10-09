@@ -1,0 +1,32 @@
+# The full production run over Nordrhein-Westfalen: every tile in input/laz_tiles.csv, no region_bbox.
+# Bavaria's production settings (../bayern/conf/production.yml); sizing comes from the -c config
+# in run_prod.sh. As there, workDir belongs on the instance's NVMe (-w) and outdir somewhere durable.
+#
+# 35,860 x 1 km, EPSG:25832.
+
+tiles_csv: input/laz_tiles.csv
+osm_pbf: input/nordrhein-westfalen-latest.osm.pbf
+
+# The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
+# state has had a parameter sweep of its own.
+pullauta_ini: ../bayern/conf/pullauta.bayern.ini
+vectorconf: ../bayern/conf/osm.txt
+
+download_jobs: 4
+download_limit_rate: '200M'
+
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+grid_size: 16
+pullauta_processes: 6 
+
+osm_chunk_size: 4
+
+attribution: 'LiDAR &copy; <a href="https://www.bezreg-koeln.nrw.de/geobasis-nrw">Geobasis NRW</a>, dl-de/zero-2-0'
+publish_mode: link
+
+map_title: 'mapant -- Nordrhein-Westfalen'
+outdir: /mnt/nvme/results/prod_nordrhein_westfalen

@@ -1,0 +1,23 @@
+{
+"type": "FeatureCollection",
+"name": "SELECT",
+"xy_coordinate_resolution": 0.0001,
+"features": [
+{ "type": "Feature", "properties": { "id": "DE-BB", "name": "Brandenburg" }, "geometry": { "type": "Point", "coordinates": [ 13.45, 52.0 ] } },
+{ "type": "Feature", "properties": { "id": "DE-BE", "name": "Berlin" }, "geometry": { "type": "Point", "coordinates": [ 13.3924, 52.5026 ] } },
+{ "type": "Feature", "properties": { "id": "DE-BW", "name": "Baden-Württemberg" }, "geometry": { "type": "Point", "coordinates": [ 9.0686, 48.6643 ] } },
+{ "type": "Feature", "properties": { "id": "DE-BY", "name": "Bayern" }, "geometry": { "type": "Point", "coordinates": [ 12.0426, 48.9165 ] } },
+{ "type": "Feature", "properties": { "id": "DE-HB", "name": "Bremen" }, "geometry": { "type": "Point", "coordinates": [ 8.8017, 53.1247 ] } },
+{ "type": "Feature", "properties": { "id": "DE-HE", "name": "Hessen" }, "geometry": { "type": "Point", "coordinates": [ 9.0309, 50.5255 ] } },
+{ "type": "Feature", "properties": { "id": "DE-HH", "name": "Hamburg" }, "geometry": { "type": "Point", "coordinates": [ 9.9805, 53.5679 ] } },
+{ "type": "Feature", "properties": { "id": "DE-MV", "name": "Mecklenburg-Vorpommern" }, "geometry": { "type": "Point", "coordinates": [ 12.3515, 53.799 ] } },
+{ "type": "Feature", "properties": { "id": "DE-NI", "name": "Niedersachsen" }, "geometry": { "type": "Point", "coordinates": [ 8.8279, 52.5923 ] } },
+{ "type": "Feature", "properties": { "id": "DE-NW", "name": "Nordrhein-Westfalen" }, "geometry": { "type": "Point", "coordinates": [ 7.5563, 51.424 ] } },
+{ "type": "Feature", "properties": { "id": "DE-RP", "name": "Rheinland-Pfalz" }, "geometry": { "type": "Point", "coordinates": [ 7.2622, 49.9468 ] } },
+{ "type": "Feature", "properties": { "id": "DE-SH", "name": "Schleswig-Holstein" }, "geometry": { "type": "Point", "coordinates": [ 9.9584, 54.1326 ] } },
+{ "type": "Feature", "properties": { "id": "DE-SL", "name": "Saarland" }, "geometry": { "type": "Point", "coordinates": [ 6.9781, 49.3657 ] } },
+{ "type": "Feature", "properties": { "id": "DE-SN", "name": "Sachsen" }, "geometry": { "type": "Point", "coordinates": [ 13.5084, 50.9145 ] } },
+{ "type": "Feature", "properties": { "id": "DE-ST", "name": "Sachsen-Anhalt" }, "geometry": { "type": "Point", "coordinates": [ 11.5541, 51.9881 ] } },
+{ "type": "Feature", "properties": { "id": "DE-TH", "name": "Thüringen" }, "geometry": { "type": "Point", "coordinates": [ 11.3007, 50.9229 ] } }
+]
+}

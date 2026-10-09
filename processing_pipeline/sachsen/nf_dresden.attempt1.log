@@ -1,0 +1,48 @@
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Input and output
+  tiles_csv          : input/laz_tiles.csv
+  osm_pbf            : input/sachsen-latest.osm.pbf
+  pullauta_ini       : ../bayern/conf/pullauta.bayern.ini
+  vectorconf         : ../bayern/conf/osm.txt
+  outdir             : results_dresden
+  publish_mode       : link
+  map_title          : mapant test -- Dresden and the Elbsandstein
+  attribution        : LiDAR &copy; <a href="https://www.geodaten.sachsen.de">GeoSN</a>, dl-de/by-2-0
+
+Region filter
+  region_bbox        : 13.5231540,50.9139128,14.0084858,51.1798724
+
+Grids and rendering
+  grid_size          : 8
+
+Download
+  download_jobs      : 8
+  download_limit_rate: 200M
+
+OpenStreetMap processing
+  osm_chunk_size     : 4
+
+Core Nextflow options
+  runName            : deadly_montalcini
+  containerEngine    : podman
+  launchDir          : /workspace/mapant-bayern/processing_pipeline/sachsen
+  workDir            : /workspace/mapant-bayern/processing_pipeline/sachsen/work
+  projectDir         : /workspace/mapant-nf
+  userName           : vscode
+  profile            : podman
+  configFiles        : /workspace/mapant-nf/nextflow.config, /tmp/claude-1000/-workspace/e00fa468-2810-490b-a43d-b06058ff4c84/scratchpad/devcontainer.config
+
+!! Only displaying parameters that differ from the pipeline defaults !!
+------------------------------------------------------[WARN] WARN: Found the following unidentified headers in /workspace/mapant-bayern/processing_pipeline/sachsen/input/laz_tiles.csv: - min_lon - min_lat - max_lon - max_lat - units - inner_laz
+Validated 4981 tile(s) against assets/schema_tiles.json[PIPELINE] mapant 0.1.0 | profile=podman
+[WORKDIR] /workspace/mapant-bayern/processing_pipeline/sachsen/work
+[PROCESS 9b/bd0ee3] PLAN_GRIDS (1)
+[PROCESS 9d/f3b9c4] OSM_EXTRACT (chunk_00002)
+[PROCESS f0/d512cb] OSM_EXTRACT (chunk_00003)
+[PROCESS 7c/000e95] RENDER_INI (pullauta_bayern)
+[PROCESS 09/52b45c] MAKE_VIEWER (1)
+[PROCESS 1b/e35b1d] OSM_EXTRACT (chunk_00001)
+[PROCESS 32/042e48] OSM_TO_SHAPES (grid_25833_26_354_pullauta_bayern)
+[WARN] WARN: Killing running tasks (3)
+
+[FAILED] completed=4 failed=0 cached=0
