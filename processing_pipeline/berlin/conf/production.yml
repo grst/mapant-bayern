@@ -13,20 +13,20 @@ pullauta_ini: ../bayern/conf/pullauta.bayern.ini
 vectorconf: ../bayern/conf/osm.txt
 
 download_jobs: 1
-download_limit_rate: '200M'
+download_limit_rate: '1000M'
 
 # MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
 # and is cut at full detail at z15. One tiling task per z11 parent.
 base_zoom: 11
 max_zoom: 15
 
-grid_size: 16
-pullauta_processes: 6
+grid_size: 8 
+pullauta_processes: 2
 
-osm_chunk_size: 1
+osm_chunk_size: 2
 
 attribution: 'LiDAR &copy; <a href="https://gdi.berlin.de">Geoportal Berlin / Airborne Laserscanning (ALS)</a>, dl-de/zero-2-0'
 publish_mode: link
 
 map_title: 'mapant -- Berlin'
-outdir: /scratch/mapant/berlin
+outdir: /scratch/mapant_run/berlin
