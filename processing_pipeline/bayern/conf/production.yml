@@ -29,13 +29,14 @@ max_zoom: 15
 # The look of the map. The tiles CSV (`pullauta_ini`) names conf/pullauta.bayern.ini for every tile, LAS 1.2
 # and 1.4 alike; this one is only the default for a tile that names none.
 pullauta_ini: conf/pullauta.bayern.ini
-vectorconf: ../kp/osm.txt
+vectorconf: conf/osm.txt
 
 grid_size: 16
-pullauta_processes: 16
+pullauta_processes: 6 
 
 osm_chunk_size: 4 
 
 map_title: 'mapant -- Bayern'
 outdir: /mnt/nvme/results/prod
+attribution: 'LiDAR &copy; <a href="https://geodaten.bayern.de">Bayerische Vermessungsverwaltung</a>'
 publish_mode: link

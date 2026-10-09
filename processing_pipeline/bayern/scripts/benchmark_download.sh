@@ -54,7 +54,7 @@
 #     the data provider before it starts, and arriving with measurements is how to have it.
 set -euo pipefail
 
-readonly DEFAULT_CSV='tests/fixtures/laz_tiles_kemptner_wald.csv'
+readonly DEFAULT_CSV='../input/laz_tiles.csv'
 readonly USER_AGENT='mapant/1.0 (+https://github.com/grst/mapant) download benchmark'
 
 # The levels bracket what -profile c8id actually opens: 56 = params.download_jobs 8 x PULLAUTA_GRID

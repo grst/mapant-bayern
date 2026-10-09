@@ -1,18 +1,22 @@
 /**
- * The background map below the orienteering map's zooms: OpenFreeMap's "Liberty" style, vector
- * tiles in the OpenMapTiles schema (src/basemap/liberty.json, see scripts/fetch-basemap.mjs).
+ * The background map: OpenFreeMap's "Liberty" style, vector tiles in the OpenMapTiles schema
+ * (src/basemap/liberty.json, see scripts/fetch-basemap.mjs) -- alone below the orienteering map's
+ * zooms, and from there on only outside the states that have an orienteering map.
  *
  * Adapted to sit in the app's own style, which has one glyph host and no sprite of its own:
  *
- * - every layer ends at the zoom the orienteering map starts at, so nothing is fetched from
- *   openfreemap.org while the orienteering map is on screen, and layers that start deeper are
- *   dropped;
+ * - every layer ends at `untilZoom`, and layers that start deeper are dropped;
+ * - with `skipTile`, its vector tiles are fetched through the `basemap-tiles` protocol, which
+ *   answers a tile that wholly lies within a mapped state, at the map's zooms, with nothing
+ *   instead of fetching it: nothing is fetched from openfreemap.org where the orienteering map is
+ *   what is shown;
  * - the fonts are the two the site serves itself (Bold becomes Medium, Italic Regular), and names
  *   are the local name in Latin script -- the served glyphs cover Latin only, and the town names
  *   on the orienteering map are local names too;
  * - the sprite is the style's, as the `default` sprite, so its icon names need no prefix.
  */
 
+import {addProtocol} from 'maplibre-gl';
 import type {
   ExpressionSpecification,
   LayerSpecification,
@@ -46,12 +50,51 @@ export interface Basemap {
   sprite: SpriteSpecification;
 }
 
-/** The basemap's sources, prefixed `basemap-`, and its layers up to `untilZoom` (exclusive). */
-export function basemap(untilZoom: number): Basemap {
+/** Whether a vector tile may be left out, because the orienteering map is shown there instead. */
+export type SkipTile = (z: number, x: number, y: number) => Promise<boolean>;
+
+let skip: SkipTile = async () => false;
+
+// The vector source's TileJSON, with its tile URLs pointed at `basemap-tiles`.
+addProtocol('basemap-tilejson', async (request, abortController) => {
+  const url = request.url.replace('basemap-tilejson://', '');
+  const response = await fetch(url, {signal: abortController.signal});
+  if (!response.ok) {
+    throw new Error(`${url}: ${response.status}`);
+  }
+  const tilejson = (await response.json()) as {tiles: string[]};
+  return {data: {...tilejson, tiles: tilejson.tiles.map((tile) => `basemap-tiles://${tile}`)}};
+});
+
+addProtocol('basemap-tiles', async (request, abortController) => {
+  const url = request.url.replace('basemap-tiles://', '');
+  const zxy = /\/(\d+)\/(\d+)\/(\d+)\.pbf$/.exec(url);
+  if (zxy && (await skip(Number(zxy[1]), Number(zxy[2]), Number(zxy[3])))) {
+    return {data: new ArrayBuffer(0)};
+  }
+  const response = await fetch(url, {signal: abortController.signal});
+  if (!response.ok) {
+    throw new Error(`${url}: ${response.status}`);
+  }
+  return {data: await response.arrayBuffer()};
+});
+
+/**
+ * The basemap's sources, prefixed `basemap-`, and its layers up to `untilZoom` (exclusive; Infinity
+ * for all). With `skipTile`, vector tiles it accepts are not fetched (see above).
+ */
+export function basemap(untilZoom: number, skipTile?: SkipTile): Basemap {
   const id = (name: string) => `basemap-${name}`;
   const sources: Record<string, SourceSpecification> = {};
   for (const [name, source] of Object.entries(liberty.sources)) {
-    sources[id(name)] = source as SourceSpecification;
+    const vector = source as SourceSpecification & {url?: string};
+    sources[id(name)] =
+      skipTile && vector.type === 'vector' && vector.url
+        ? {...vector, url: `basemap-tilejson://${vector.url}`}
+        : vector;
+  }
+  if (skipTile) {
+    skip = skipTile;
   }
   const layers: LayerSpecification[] = [];
   for (const layer of liberty.layers as unknown as StyleLayer[]) {

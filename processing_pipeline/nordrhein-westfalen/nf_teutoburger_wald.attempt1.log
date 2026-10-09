@@ -1,0 +1,59 @@
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Input and output
+  tiles_csv          : input/laz_tiles.csv
+  osm_pbf            : input/nordrhein-westfalen-latest.osm.pbf
+  pullauta_ini       : ../bayern/conf/pullauta.bayern.ini
+  vectorconf         : ../bayern/conf/osm.txt
+  outdir             : results_teutoburger_wald
+  publish_mode       : link
+  map_title          : mapant test -- Teutoburger Wald
+  attribution        : LiDAR &copy; <a href="https://www.bezreg-koeln.nrw.de/geobasis-nrw">Geobasis NRW</a>, dl-de/zero-2-0
+
+Region filter
+  region_bbox        : 8.6506288,51.8287517,8.9846243,51.9524294
+
+Grids and rendering
+  grid_size          : 16
+
+Download
+  download_jobs      : 8
+  download_limit_rate: 200M
+
+OpenStreetMap processing
+  osm_chunk_size     : 4
+
+Core Nextflow options
+  runName            : irreverent_archimedes
+  containerEngine    : podman
+  launchDir          : /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen
+  workDir            : /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/work
+  projectDir         : /workspace/mapant-nf
+  userName           : vscode
+  profile            : podman
+  configFiles        : /workspace/mapant-nf/nextflow.config, /tmp/claude-1000/-workspace/e00fa468-2810-490b-a43d-b06058ff4c84/scratchpad/devcontainer.config
+
+!! Only displaying parameters that differ from the pipeline defaults !!
+------------------------------------------------------[WARN] WARN: Found the following unidentified headers in /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/input/laz_tiles.csv: - min_lon - min_lat - max_lon - max_lat - units
+Validated 35860 tile(s) against assets/schema_tiles.json[PIPELINE] mapant 0.1.0 | profile=podman
+[WORKDIR] /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/work
+[PROCESS 11/fb5de4] PLAN_GRIDS (1)
+[PROCESS b8/2b87bd] OSM_EXTRACT (chunk_00002)
+[PROCESS c5/94d17c] OSM_EXTRACT (chunk_00001)
+[PROCESS b7/84673b] RENDER_INI (pullauta_bayern)
+[PROCESS cf/81a89e] MAKE_VIEWER (1)
+[PROCESS 02/ccef3d] OSM_TO_SHAPES (grid_25832_31_359_pullauta_bayern)
+[PROCESS a9/8ce3dc] OSM_TO_SHAPES (grid_25832_31_358_pullauta_bayern)
+[PROCESS ba/c4f0aa] PULLAUTA_GRID (grid_25832_31_358_pullauta_bayern)
+[PROCESS 3b/0e9110] OSM_TO_SHAPES (grid_25832_30_359_pullauta_bayern)
+[PROCESS d8/41c0df] OSM_TO_SHAPES (grid_25832_29_359_pullauta_bayern)
+[PROCESS 81/357f81] OSM_TO_SHAPES (grid_25832_30_358_pullauta_bayern)
+[PROCESS 4f/fcf897] OSM_TO_SHAPES (grid_25832_29_358_pullauta_bayern)
+[PROCESS 58/5a5483] PULLAUTA_GRID (grid_25832_31_359_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25832_31_358_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: fetch_laz.py:   3dm_32_496_5744_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_497_5740_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_497_5744_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_498_5740_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_498_5744_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_499_5740_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_499_5741_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_499_5742_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_499_5743_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts | fetch_laz.py:   3dm_32_499_5744_1_nw.laz	halo	transient	curl exit 6, HTTP 000: curl: (6) Could not resolve host: www.opengeodata.nrw.de after 3 attempts
+workdir: /workspace/mapant-bayern/processing_pipeline/nordrhein-westfalen/work/ba/c4f0aab47dd49f9665b3b7347599cd
+[WARN] WARN: Killing running tasks (1)
+
+[FAILED] completed=12 failed=1 cached=0

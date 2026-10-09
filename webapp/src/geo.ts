@@ -96,3 +96,26 @@ export function interiorPoint(ring: LonLat[]): LonLat {
   }
   return best;
 }
+
+/** A web-mercator tile's square in lon/lat: west, south, east, north. */
+export function tileBounds(z: number, x: number, y: number): [number, number, number, number] {
+  const size = (2 * HALF_WORLD) / 2 ** z;
+  const [west, north] = toLonLat([-HALF_WORLD + x * size, HALF_WORLD - y * size]);
+  const [east, south] = toLonLat([-HALF_WORLD + (x + 1) * size, HALF_WORLD - (y + 1) * size]);
+  return [west, south, east, north];
+}
+
+/** Whether a point is inside a polygon: its outer ring, less its holes (even-odd rule). */
+export function inPolygon([lon, lat]: LonLat, rings: LonLat[][]): boolean {
+  let inside = false;
+  for (const ring of rings) {
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+  }
+  return inside;
+}

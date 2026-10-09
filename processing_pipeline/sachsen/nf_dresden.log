@@ -1,0 +1,179 @@
+Input and output
+  tiles_csv          : input/laz_tiles.csv
+  osm_pbf            : input/sachsen-latest.osm.pbf
+  pullauta_ini       : ../bayern/conf/pullauta.bayern.ini
+  vectorconf         : ../bayern/conf/osm.txt
+  outdir             : results_dresden
+  publish_mode       : link
+  map_title          : mapant test -- Dresden and the Elbsandstein
+  attribution        : LiDAR &copy; <a href="https://www.geodaten.sachsen.de">GeoSN</a>, dl-de/by-2-0
+
+Region filter
+  region_bbox        : 13.5231540,50.9139128,14.0084858,51.1798724
+
+Grids and rendering
+  grid_size          : 6
+  pullauta_processes : 4
+
+Download
+  download_jobs      : 8
+  download_limit_rate: 200M
+
+OpenStreetMap processing
+  osm_chunk_size     : 4
+
+Core Nextflow options
+  runName            : intergalactic_engelbart
+  containerEngine    : podman
+  launchDir          : /workspace/mapant-bayern/processing_pipeline/sachsen
+  workDir            : /workspace/mapant-bayern/processing_pipeline/sachsen/work
+  projectDir         : /workspace/mapant-nf
+  userName           : vscode
+  profile            : podman
+  configFiles        : /workspace/mapant-nf/nextflow.config, /tmp/claude-1000/-workspace/e00fa468-2810-490b-a43d-b06058ff4c84/scratchpad/devcontainer.config
+
+!! Only displaying parameters that differ from the pipeline defaults !!
+------------------------------------------------------[WARN] WARN: Found the following unidentified headers in /workspace/mapant-bayern/processing_pipeline/sachsen/input/laz_tiles.csv: - min_lon - min_lat - max_lon - max_lat - units - inner_laz
+Validated 4981 tile(s) against assets/schema_tiles.json[PIPELINE] mapant 0.1.0 | profile=podman
+[WORKDIR] /workspace/mapant-bayern/processing_pipeline/sachsen/work
+[PROCESS 6c/40fcb2] PLAN_GRIDS (1)
+[PROCESS a0/8a3d77] OSM_EXTRACT (chunk_00002)
+[PROCESS bc/a284e7] RENDER_INI (pullauta_bayern)
+[PROCESS 95/3910c3] MAKE_VIEWER (1)
+[PROCESS 49/8e2351] OSM_EXTRACT (chunk_00001)
+[PROCESS c3/06c44a] OSM_TO_SHAPES (grid_25833_35_470_pullauta_bayern)
+[PROCESS b3/086856] OSM_TO_SHAPES (grid_25833_35_471_pullauta_bayern)
+[PROCESS 77/de0b20] OSM_TO_SHAPES (grid_25833_34_472_pullauta_bayern)
+[PROCESS 06/ad398d] OSM_TO_SHAPES (grid_25833_34_471_pullauta_bayern)
+[PROCESS 8e/6beacc] OSM_EXTRACT (chunk_00003)
+[PROCESS 00/ab3ef2] OSM_TO_SHAPES (grid_25833_33_470_pullauta_bayern)
+[PROCESS b4/efd334] OSM_TO_SHAPES (grid_25833_34_470_pullauta_bayern)
+[PROCESS 8b/989b1e] PULLAUTA_GRID (grid_25833_34_472_pullauta_bayern)
+[PROCESS 5c/7a8f1d] OSM_TO_SHAPES (grid_25833_33_471_pullauta_bayern)
+[PROCESS 33/57bf6f] OSM_TO_SHAPES (grid_25833_33_472_pullauta_bayern)
+[PROCESS ff/246f45] OSM_TO_SHAPES (grid_25833_35_472_pullauta_bayern)
+[PROCESS b1/0820be] PULLAUTA_GRID (grid_25833_35_471_pullauta_bayern)
+[PROCESS cc/88b7a5] PULLAUTA_GRID (grid_25833_35_470_pullauta_bayern)
+[PROCESS b4/dbbb1b] PULLAUTA_GRID (grid_25833_33_470_pullauta_bayern)
+[PROCESS 85/1cab4b] MAKE_VECTOR_TILES (11/1103/685)
+[PROCESS 7c/90009e] MAKE_VECTOR_TILES (11/1103/686)
+[PROCESS f5/3753aa] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+[PROCESS 7e/af0233] MAKE_VECTOR_TILES (11/1100/686)
+[PROCESS da/bd305a] PULLAUTA_GRID (grid_25833_34_470_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: fetch_laz.py: 58 verified, 4 permanently unavailable, 2 transient failures | fetch_laz.py: giving up so the grid can be retried; see download_failures.grid_25833_34_471_pullauta_bayern.tsv | fetch_laz.py:   lsc_33412_5656_2_sn_laz.zip	core	permanent	verification failed on every attempt: size mismatch (expected 383787613, got 960) | fetch_laz.py:   lsc_33412_5658_2_sn_laz.zip	core	permanent	verification failed on every attempt: size mismatch (expected 428047362, got 960) | fetch_laz.py:   lsc_33412_5662_2_sn_laz.zip	core	permanent	verification failed on every attempt: size mismatch (expected 470195983, got 960) | fetch_laz.py:   lsc_33414_5658_2_sn_laz.zip	core	transient	curl exit 22, HTTP 502: curl: (22) The requested URL returned error: 502 after 3 attempts | fetch_laz.py:   lsc_33416_5654_2_sn_laz.zip	core	transient	curl exit 22, HTTP 502: curl: (22) The requested URL returned error: 502 after 3 attempts | fetch_laz.py:   lsc_33416_5656_2_sn_laz.zip	core	permanent	verification failed on every attempt: size mismatch (expected 492596688, got 960)
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/f5/3753aa80bd72af29cf729c5dac49ea
+[PROCESS a7/337e80] PULLAUTA_GRID (grid_25833_35_472_pullauta_bayern)
+[PROCESS 6d/9b5c6f] MAKE_VECTOR_TILES (11/1101/686)
+[PROCESS 4a/8f8d96] MAKE_VECTOR_TILES (11/1102/686)
+[PROCESS 3a/8bc595] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+[PROCESS a1/d92baf] MAKE_VECTOR_TILES (11/1102/683)
+[ERROR] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+[PROCESS 48/82fb1f] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33406_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/3a/8bc59541f055589d86dd46b938d1ce
+[ERROR] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33404_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33404_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5664_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5666_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 24 core tiles, 24 halo tiles (24 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_472_pullauta_bayern finished: 0 tile(s) rendered, 24 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/48/82fb1f5b4654cbb675989a81c384b1
+[PROCESS 73/1c1110] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33418_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_34_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/73/1c1110f98e8e165089a9ebaed1a2c3
+[PROCESS 4c/b604fc] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33406_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/4c/b604fc1631b8f27390dc9e5078e86a
+[PROCESS b3/7068f2] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33404_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33404_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5664_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5666_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 24 core tiles, 24 halo tiles (24 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_472_pullauta_bayern finished: 0 tile(s) rendered, 24 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/b3/7068f263c724a864ea8784a4a857f1
+[PROCESS a0/706f14] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33418_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_34_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/a0/706f1411c3c7ade7ffad5fa20ef518
+[PROCESS 09/28ee95] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33406_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/09/28ee95c35efc271df104524d56ac67
+[PROCESS 18/09877e] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33404_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33404_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5664_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5666_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 24 core tiles, 24 halo tiles (24 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_472_pullauta_bayern finished: 0 tile(s) rendered, 24 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/18/09877e6c5faeaba2d2093e6002d60d
+[PROCESS 32/8e4dee] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+[PROCESS ed/fe4a0f] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_34_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33418_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33418_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_34_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/32/8e4dee56061498f46459cc322198b9
+[ERROR] PULLAUTA_GRID (grid_25833_33_471_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33406_5652_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5654_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5656_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5658_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5660_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5662_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 36 core tiles, 28 halo tiles (28 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_471_pullauta_bayern finished: 0 tile(s) rendered, 36 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/ed/fe4a0fcb55b9b74d58a02044759a00
+[PROCESS 36/379fc8] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+[ERROR] PULLAUTA_GRID (grid_25833_33_472_pullauta_bayern)
+exit: 1
+cmd: # karttapullautin never deletes its own temporaries -- savetempfiles/savetempfolders control # extra *outputs*, not cleanup. A trap rather than a plain rm at the end, because Nextflow keeps # ...
+stderr: run_pullauta.py: lsc_33404_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33404_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5664_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5666_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5668_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: lsc_33406_5670_2_sn_laz was never downloaded; recording it as a hole | run_pullauta.py: 24 core tiles, 24 halo tiles (24 placeholders so they are not rendered) | run_pullauta.py: grid_25833_33_472_pullauta_bayern finished: 0 tile(s) rendered, 24 recorded as failures | run_pullauta.py: no tiles rendered at all; failing so this grid is retried | run_pullauta.py: 
+workdir: /workspace/mapant-bayern/processing_pipeline/sachsen/work/36/379fc8c7389eb677215b10e74e4082
+[PROCESS 48/70cbf3] MAKE_VECTOR_TILES (11/1103/683)
+[PROCESS 05/54e9da] MAKE_VECTOR_TILES (11/1101/683)
+[PROCESS 35/87e7ba] MAKE_VECTOR_TILES (11/1101/684)
+[PROCESS b0/53d779] MAKE_VECTOR_TILES (11/1100/685)
+[PROCESS 63/37b889] MAKE_VECTOR_TILES (11/1101/685)
+[PROCESS 06/d86762] MAKE_VECTOR_TILES (11/1102/684)
+[PROCESS e2/b9fa27] MAKE_VECTOR_TILES (11/1103/684)
+[PROCESS ef/f908ea] MAKE_VECTOR_TILES (11/1102/685)
+[PROCESS 2a/906604] MERGE_PMTILES (1)
+[WARN] WARN: 3 task(s) ignored after exhausting their retries -- the map has gaps. See /workspace/mapant-bayern/processing_pipeline/sachsen/results_dresden/qc/failed_grids.txt
+
+Outputs:
+
+  /workspace/mapant-bayern/processing_pipeline/sachsen/results_dresden
+
+  map:
+    - map/index.html
+    - map/sprite.json
+    - map/sprite.png
+    - map/sprite@2x.json
+    - map/sprite@2x.png
+    - map/style.json
+    - map/mapant.pmtiles
+
+  qc:
+    - qc/pullauta.grid_25833_34_472_pullauta_bayern.log
+    - qc/pullauta.grid_25833_35_471_pullauta_bayern.log
+    - qc/pullauta.grid_25833_35_470_pullauta_bayern.log
+    - qc/pullauta.grid_25833_33_470_pullauta_bayern.log
+    - qc/pullauta.grid_25833_34_470_pullauta_bayern.log
+    - qc/pullauta.grid_25833_35_472_pullauta_bayern.log
+    - qc/pullauta_failures.tsv
+    - qc/download_failures.tsv
+
+  plan:
+    - pipeline_info/grids.csv
+    - pipeline_info/inis.csv
+    - pipeline_info/parent_tiles.csv
+    - pipeline_info/plan_summary.txt
+    - pipeline_info/effective.pullauta_bayern.ini
+
+[FAILED] completed=48 failed=12 cached=0

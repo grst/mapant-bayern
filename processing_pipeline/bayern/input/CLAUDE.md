@@ -5,8 +5,8 @@ Bayerische Vermessungsverwaltung publishes as OpenData under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.de) on the
 [OpenData portal](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=laserdaten).
 
-**71,979 tiles, 13.66 TiB total** (index generated 2026-07-29 from Metalinks
-published 2026-07-28).
+**71,979 tiles, 14.55 TiB total** (index generated 2026-10-07 from Metalinks
+published 2026-10-06; 1,784 tiles re-published since the 2026-07-28 index).
 
 ## Is there an official list?
 

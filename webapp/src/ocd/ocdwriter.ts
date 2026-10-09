@@ -32,10 +32,14 @@ const ENTRIES_PER_BLOCK = 256;
 const OBJECT_INDEX_ENTRY_SIZE = 40;
 const OBJECT_INDEX_BLOCK_SIZE = 4 + ENTRIES_PER_BLOCK * OBJECT_INDEX_ENTRY_SIZE;
 const STRING_INDEX_ENTRY_SIZE = 16;
+const STRING_INDEX_BLOCK_SIZE = 4 + ENTRIES_PER_BLOCK * STRING_INDEX_ENTRY_SIZE;
 const OBJECT_HEADER_SIZE = 56;
 
 /** Parameter string holding the map scale and the real-world reference point. */
 const STRING_TYPE_SCALE = 1039;
+
+/** Parameter string naming a background map (Mapper calls it a template) and placing it. */
+export const STRING_TYPE_BACKGROUND_MAP = 8;
 
 /** `status` of an object that is simply there. */
 const OBJECT_STATUS_NORMAL = 1;
@@ -86,6 +90,12 @@ export interface GeorefOptions {
    * ETRS89 / UTM zone 32N (EPSG:25832), which is what Bavaria's LiDAR is in.
    */
   gridZone: number;
+}
+
+/** A parameter string to add to the file: its type and its tab-separated text. */
+export interface ParameterString {
+  type: number;
+  text: string;
 }
 
 /** Walk an index block chain, calling back with the offset of each block. */
@@ -181,6 +191,7 @@ export function writeOcd(
   template: ArrayBuffer,
   objects: OcdObject[],
   georef: GeorefOptions,
+  strings: ParameterString[] = [],
 ): {file: Uint8Array; written: number; skipped: Map<string, number>} {
   const known = templateSymbolNumbers(template);
 
@@ -222,6 +233,36 @@ export function writeOcd(
   });
   if (!repointed) {
     throw new Error('the OCD template has no georeferencing string to replace');
+  }
+
+  // ---- further parameter strings ------------------------------------------
+  // Into free entries of the template's string index, or a block appended to its chain.
+  const freeStringSlots: {view: DataView; at: number}[] = [];
+  let lastStringBlock = head.getUint32(OFFSET_FIRST_STRING_BLOCK, true);
+  forEachBlock(head, lastStringBlock, (block) => {
+    lastStringBlock = block;
+    for (let i = 0; i < ENTRIES_PER_BLOCK; i++) {
+      const entry = block + 4 + i * STRING_INDEX_ENTRY_SIZE;
+      if (head.getUint32(entry, true) === 0) {
+        freeStringSlots.push({view: head, at: entry});
+      }
+    }
+  });
+  if (strings.length > freeStringSlots.length) {
+    const bytes = new Uint8Array(STRING_INDEX_BLOCK_SIZE);
+    const view = new DataView(bytes.buffer);
+    head.setUint32(lastStringBlock, push(bytes), true);
+    for (let i = 0; i < ENTRIES_PER_BLOCK; i++) {
+      freeStringSlots.push({view, at: 4 + i * STRING_INDEX_ENTRY_SIZE});
+    }
+  }
+  for (const {type, text} of strings) {
+    const bytes = toBytes(text + '\0');
+    const slot = freeStringSlots.shift()!;
+    slot.view.setUint32(slot.at, push(bytes), true);
+    slot.view.setUint32(slot.at + 4, bytes.byteLength, true);
+    slot.view.setInt32(slot.at + 8, type, true);
+    slot.view.setInt32(slot.at + 12, 0, true);
   }
 
   // ---- objects ------------------------------------------------------------

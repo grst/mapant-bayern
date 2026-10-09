@@ -1,6 +1,7 @@
 import type {Key} from '../i18n/en';
 import type {LayerCode} from '../urlstate';
 import {controlButton, element, i18nText} from './dom';
+import {popover} from './popover';
 
 export interface LayerToggle {
   code: LayerCode;
@@ -22,7 +23,6 @@ export function createLayerPanel(
   const container = element('div', 'maplibregl-ctrl maplibregl-ctrl-group layer-panel');
   const button = controlButton('layers', 'layers.toggle');
   const panel = element('div', 'layer-panel-body');
-  panel.hidden = true;
   panel.append(i18nText('h2', 'layers.title'));
 
   for (const toggle of toggles) {
@@ -42,21 +42,7 @@ export function createLayerPanel(
     panel.append(label);
   }
 
-  const setOpen = (open: boolean) => {
-    panel.hidden = !open;
-    button.setAttribute('aria-expanded', String(open));
-  };
-  setOpen(false);
-  button.addEventListener('click', (event) => {
-    event.stopPropagation();
-    setOpen(panel.hidden);
-  });
-  document.addEventListener('click', (event) => {
-    if (!panel.hidden && event.target instanceof Node && !container.contains(event.target)) {
-      setOpen(false);
-    }
-  });
-
+  popover(container, button, panel);
   container.append(button, panel);
   return container;
 }

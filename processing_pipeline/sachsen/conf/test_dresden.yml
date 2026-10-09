@@ -1,0 +1,36 @@
+# A production-scale test region: Dresden and the Elbsandstein, from 51.179872 N 13.523154 E to
+# 50.913913 N 14.008486 E, given in lon/lat. Everything else is the production run's
+# (conf/production.yml), so this exercises the full pipeline at production settings.
+
+tiles_csv: input/laz_tiles.csv
+osm_pbf: input/sachsen-latest.osm.pbf
+
+region_bbox: '13.5231540,50.9139128,14.0084858,51.1798724'
+region_bbox_crs: lonlat
+
+# The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
+# state has had a parameter sweep of its own.
+pullauta_ini: ../bayern/conf/pullauta.bayern.ini
+vectorconf: ../bayern/conf/osm.txt
+
+download_jobs: 8
+download_limit_rate: '200M'
+
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+# Sachsen's tiles are 2 x 2 km and ~450 MB each. Over this region 6 x 6 grids download the same
+# 208 GiB as 8 x 8 (the halo the region's edges share is the same), with the largest grid's laz
+# down from 41.5 to 27 GiB; 4 x 4 would cost 264 GiB, since every halo tile is a 2 km tile.
+grid_size: 6
+pullauta_processes: 16
+
+osm_chunk_size: 4
+
+attribution: 'LiDAR &copy; <a href="https://www.geodaten.sachsen.de">GeoSN</a>, dl-de/by-2-0'
+publish_mode: link
+
+map_title: 'mapant test -- Dresden and the Elbsandstein'
+outdir: results_dresden

@@ -17,7 +17,7 @@ async function stubTiles(page: Page): Promise<void> {
   await page.route(/tiles\.mapterhorn\.com/, (route) =>
     route.fulfill({status: 200, contentType: 'image/png', body: png}),
   );
-  await page.route(/pub-77421d3fb5d34fc09d670e81f6c2dadf\.r2\.dev/, (route) => route.abort());
+  await page.route(/mapant-tiles\.orienteering-allgaeu\.de/, (route) => route.abort());
 }
 
 type Point = {x: number; y: number};

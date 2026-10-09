@@ -1,0 +1,33 @@
+# A production-scale test region: Teutoburger Wald, from 51.952429 N 8.650629 E to
+# 51.828752 N 8.984624 E, given in lon/lat. Everything else is the production run's
+# (conf/production.yml), so this exercises the full pipeline at production settings.
+
+tiles_csv: input/laz_tiles.csv
+osm_pbf: input/nordrhein-westfalen-latest.osm.pbf
+
+region_bbox: '8.6506288,51.8287517,8.9846243,51.9524294'
+region_bbox_crs: lonlat
+
+# The look of the map is Bavaria's for now: the same karttapullautin ini and OSM rules, until this
+# state has had a parameter sweep of its own.
+pullauta_ini: ../bayern/conf/pullauta.bayern.ini
+vectorconf: ../bayern/conf/osm.txt
+
+download_jobs: 8
+download_limit_rate: '200M'
+
+# MapLibre's 512 px zooms: the archive starts with a contour-free overview at z10 (base_zoom - 1)
+# and is cut at full detail at z15. One tiling task per z11 parent.
+base_zoom: 11
+max_zoom: 15
+
+grid_size: 16
+pullauta_processes: 16
+
+osm_chunk_size: 4
+
+attribution: 'LiDAR &copy; <a href="https://www.bezreg-koeln.nrw.de/geobasis-nrw">Geobasis NRW</a>, dl-de/zero-2-0'
+publish_mode: link
+
+map_title: 'mapant test -- Teutoburger Wald'
+outdir: results_teutoburger_wald
