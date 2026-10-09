@@ -1,14 +1,15 @@
 /**
  * The background map: OpenFreeMap's "Liberty" style, vector tiles in the OpenMapTiles schema
  * (src/basemap/liberty.json, see scripts/fetch-basemap.mjs) -- alone below the orienteering map's
- * zooms, and from there on wherever there is no orienteering map.
+ * zooms, and from there on only outside the states that have an orienteering map.
  *
  * Adapted to sit in the app's own style, which has one glyph host and no sprite of its own:
  *
  * - every layer ends at `untilZoom`, and layers that start deeper are dropped;
  * - with `skipTile`, its vector tiles are fetched through the `basemap-tiles` protocol, which
- *   answers a tile that wholly lies under the orienteering map with nothing instead of fetching it:
- *   the map's paper would hide it anyway, and nothing is fetched from openfreemap.org for it;
+ *   answers a tile that wholly lies within a mapped state, at the map's zooms, with nothing
+ *   instead of fetching it: nothing is fetched from openfreemap.org where the orienteering map is
+ *   what is shown;
  * - the fonts are the two the site serves itself (Bold becomes Medium, Italic Regular), and names
  *   are the local name in Latin script -- the served glyphs cover Latin only, and the town names
  *   on the orienteering map are local names too;
@@ -49,7 +50,7 @@ export interface Basemap {
   sprite: SpriteSpecification;
 }
 
-/** Whether a vector tile may be left out, because the orienteering map covers all of it. */
+/** Whether a vector tile may be left out, because the orienteering map is shown there instead. */
 export type SkipTile = (z: number, x: number, y: number) => Promise<boolean>;
 
 let skip: SkipTile = async () => false;

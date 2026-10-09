@@ -2,6 +2,7 @@
 name = "optimize-params"
 version = "0.1.0"
 requires-python = ">=3.12"
+license = "GPL-3.0-or-later"
 dependencies = [
   "numpy", "scipy", "pandas", "pyarrow", "shapely", "pyproj", "rasterio", "pillow",
   "scikit-image", "laspy[lazrs]", "optuna", "matplotlib", "requests", "pyyaml", "mercantile",

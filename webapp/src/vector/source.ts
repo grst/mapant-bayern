@@ -3,7 +3,7 @@
  * static hosting. No tile server needed, which is the point.
  */
 
-import {ARCHIVE, fetchTile} from '../archive';
+import {ARCHIVE_ZOOMS, fetchTile} from '../archive';
 
 export interface VectorSource {
   minZoom: number;
@@ -15,5 +15,5 @@ export interface VectorSource {
 
 /** The archive the map is drawn from (archive.ts). */
 export function archiveSource(): VectorSource {
-  return {minZoom: ARCHIVE.minZoom, maxZoom: ARCHIVE.maxZoom, fetchTile: (z, x, y) => fetchTile(z, x, y)};
+  return {minZoom: ARCHIVE_ZOOMS.minZoom, maxZoom: ARCHIVE_ZOOMS.maxZoom, fetchTile: (z, x, y) => fetchTile(z, x, y)};
 }

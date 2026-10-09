@@ -66,6 +66,28 @@ test('layer toggles are reflected in the share URL', async ({page}) => {
   await expect.poll(() => page.url()).toContain('layers=h&');
 });
 
+test('private property is shown by default and can be switched off', async ({page}) => {
+  await page.goto('/#map=13/47.5635/10.2142&lang=en');
+  await page.getByRole('button', {name: 'Layers'}).click();
+
+  const olive = page.locator('input[data-layer="p"]');
+  await expect(olive).toBeChecked();
+  await expect.poll(() => page.url()).toContain('layers=l,p&');
+
+  await olive.uncheck();
+  await expect.poll(() => page.url()).toContain('layers=l&');
+});
+
+test('the export panels open one at a time', async ({page}) => {
+  await page.goto('/#map=13/47.5635/10.2142&lang=en');
+  await page.getByRole('button', {name: 'Export as PDF'}).click();
+  await expect(page.locator('.pdf-panel .print-panel-body')).toBeVisible();
+
+  await page.getByRole('button', {name: 'Export as OCAD file'}).click();
+  await expect(page.locator('.ocd-panel .print-panel-body')).toBeVisible();
+  await expect(page.locator('.pdf-panel .print-panel-body')).toBeHidden();
+});
+
 test('restores drawings from a share link', async ({page}) => {
   const payload = encodeDrawings([
     {t: 'l', c: [[10.2, 47.56], [10.22, 47.57]]},

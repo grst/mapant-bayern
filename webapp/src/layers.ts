@@ -6,17 +6,22 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl';
-import {ARCHIVE, ARCHIVES, fetchTile, intersects, isMapped} from './archive';
+import {ARCHIVE_ZOOMS, fetchTile, intersects, isMapped, LOADED_ARCHIVES} from './archive';
 import {basemap, BASEMAP_ATTRIBUTION} from './basemap';
 import {isomLayers} from './isomstyle';
 import {t} from './i18n';
 import type {Key} from './i18n/en';
 import {STATE_LABELS_URL, STATES, STATES_URL, STATUS_COLORS, STATUSES, type LidarStatus} from './states';
-import {registerMergedTiles} from './tilemerge';
 
-/** The archive's tile levels. The deepest is the only one that carries the full map. */
-export const TILES_MIN_ZOOM = ARCHIVE.minZoom;
-export const TILES_MAX_ZOOM = ARCHIVE.maxZoom;
+/** The archives' tile levels. The deepest is the only one that carries the full map. */
+export const TILES_MIN_ZOOM = ARCHIVE_ZOOMS.minZoom;
+export const TILES_MAX_ZOOM = ARCHIVE_ZOOMS.maxZoom;
+
+/**
+ * Where the map can have tiles at all, known before any archive's header is read: Germany, and the
+ * neighbours' ground the archives take in along the border. MapLibre asks for nothing outside.
+ */
+const MAP_BOUNDS: [number, number, number, number] = [5.7, 47.1, 15.2, 55.2];
 
 /** The map's tiles at their own level, from whichever state archives hold them (archive.ts). */
 addProtocol('mapant-tiles', async (request, abortController) => {
@@ -24,44 +29,20 @@ addProtocol('mapant-tiles', async (request, abortController) => {
   return {data: (await fetchTile(z, x, y, abortController.signal)) ?? new ArrayBuffer(0)};
 });
 
-/**
- * For a print: the deepest level, whatever the zoom. MapLibre picks the tile level from the zoom
- * alone, so a print map -- at the zoom of its scale and a high pixel ratio -- would otherwise get
- * the tiles a screen at that scale does, generalised for 96 dpi. Each tile it asks for is merged
- * from the deepest tiles under it (tilemerge.ts).
- */
-registerMergedTiles({
-  scheme: 'mapant-print-tiles',
-  fetchTile: (z, x, y, signal) => {
-    // Which level a print reads, where the tests can see it: the archive's range requests do not say.
-    performance.mark('mapant-print-tile', {detail: {z}});
-    return fetchTile(z, x, y, signal);
-  },
-  levels: (z) => Math.max(0, TILES_MAX_ZOOM - z),
-});
-
-/** The print map's source, as TileJSON: the archive's zooms and bounds, read through the merge. */
-addProtocol('mapant-print', async () => ({
-  data: {
-    tilejson: '3.0.0',
-    tiles: ['mapant-print-tiles://{z}/{x}/{y}'],
-    minzoom: TILES_MIN_ZOOM,
-    maxzoom: TILES_MAX_ZOOM,
-    ...(ARCHIVE.bounds ? {bounds: ARCHIVE.bounds} : {}),
-  },
-}));
-
 /** Map zoom from which the orienteering map is shown, and below which the OpenFreeMap basemap is. */
 export const MAP_MIN_ZOOM = TILES_MIN_ZOOM;
 
-/** Deepest map zoom. Beyond the archive's last level the tiles are drawn overzoomed. */
-export const MAP_MAX_ZOOM = 17;
+/**
+ * Deepest map zoom: MapLibre's own limit (22 at 512 px tiles, a link zoom of 23). Beyond the
+ * archive's last level the tiles are drawn overzoomed, which a vector map takes without blurring.
+ */
+export const MAP_MAX_ZOOM = 22;
 
 /** Highest zoom level Mapterhorn's terrain tiles are available at. */
 const MAPTERHORN_MAX_ZOOM = 16;
 
 /** Town names, generated from OpenStreetMap by scripts/fetch-places.mjs and served with the site. */
-const PLACES_URL = new URL('places.geojson', location.href).href;
+export const PLACES_URL = new URL('places.geojson', location.href).href;
 
 /** Self-hosted, see public/fonts/README.md. Concatenated: URL() would encode the placeholders. */
 const GLYPHS_URL = `${location.origin}/fonts/{fontstack}/{range}.pbf`;
@@ -76,20 +57,24 @@ const MAPTERHORN_ATTRIBUTION =
   '© <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>';
 
 /** The layers a visitor can switch on and off. */
-export type OptionalLayer = 'hillshade' | 'places';
+export type OptionalLayer = 'hillshade' | 'places' | 'private';
 
 export type Visibility = Record<OptionalLayer, boolean>;
 
+/** The orienteering map's style layers that draw ISOM 520 (isPrivateArea), in both passes. */
+const PRIVATE_LAYERS = isomLayers({source: 'mapant', minZoom: 0})
+  .filter((layer) => /-520\.\d+$/.test(layer.id))
+  .map((layer) => layer.id);
+
 /** Style layers behind each switchable layer. */
-export const OPTIONAL_STYLE_LAYERS: Record<OptionalLayer, string> = {
-  hillshade: 'hillshade',
-  places: 'places',
+export const OPTIONAL_STYLE_LAYERS: Record<OptionalLayer, string[]> = {
+  hillshade: ['hillshade'],
+  places: ['places'],
+  private: PRIVATE_LAYERS,
 };
 
 export interface StyleOptions {
   visible: Visibility;
-  /** For a print: read the deepest tiles whatever the zoom (see `mapant-print-tiles`). */
-  print?: boolean;
   drawings?: GeoJSON.FeatureCollection;
   drawingLabels?: GeoJSON.FeatureCollection;
 }
@@ -105,31 +90,22 @@ export function createStyle(options: StyleOptions): StyleSpecification {
     data,
   });
 
-  // At every zoom, wherever there is no orienteering map: a tile wholly under the map is not even
-  // fetched (isMapped), and the map's white paper (`coverage`) hides the rest where they overlap.
-  // Not on a print, which would pull its tiles at 600 dpi.
-  const background = options.print ? basemap(MAP_MIN_ZOOM) : basemap(Infinity, isMapped);
+  // At every zoom outside the states that have an orienteering map, and below the map's zooms
+  // inside them: there a tile wholly within the state is not even fetched (isMapped), and the
+  // map's white paper (`coverage`) hides the rest where they overlap.
+  const background = basemap(Infinity, isMapped);
   const sources: Record<string, SourceSpecification> = {
     ...background.sources,
-    mapant: options.print
-      ? {type: 'vector', url: 'mapant-print://'}
-      : {
-          type: 'vector',
-          tiles: ['mapant-tiles://{z}/{x}/{y}'],
-          minzoom: TILES_MIN_ZOOM,
-          maxzoom: TILES_MAX_ZOOM,
-          ...(ARCHIVE.bounds ? {bounds: ARCHIVE.bounds} : {}),
-        },
+    mapant: {
+      type: 'vector',
+      tiles: ['mapant-tiles://{z}/{x}/{y}'],
+      minzoom: TILES_MIN_ZOOM,
+      maxzoom: TILES_MAX_ZOOM,
+      bounds: MAP_BOUNDS,
+    },
     states: geojson(STATES_URL),
     'state-labels': geojson(STATE_LABELS_URL),
-    dem: {
-      type: 'raster-dem',
-      tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
-      // For a print, declared smaller than they are so the finest terrain is read (see above).
-      tileSize: options.print ? 128 : 512,
-      maxzoom: MAPTERHORN_MAX_ZOOM,
-      encoding: 'terrarium',
-    },
+    dem: demSource(),
     places: geojson(PLACES_URL),
     drawings: geojson(options.drawings ?? EMPTY_COLLECTION),
     'drawing-labels': geojson(options.drawingLabels ?? EMPTY_COLLECTION),
@@ -137,39 +113,73 @@ export function createStyle(options: StyleOptions): StyleSpecification {
 
   // The state shading goes between the basemap's ground and its labels, so the names stay legible.
   // The basemap's own state names are left out: the shading's labels carry them.
-  const labels = background.layers.filter(
-    (layer) => layer.type === 'symbol' && (options.print || layer.id !== 'basemap-label_state'),
-  );
+  const labels = background.layers.filter((layer) => layer.type === 'symbol' && layer.id !== 'basemap-label_state');
   const ground = background.layers.filter((layer) => layer.type !== 'symbol');
+  const privateVisibility = visibility('private');
   const layers: LayerSpecification[] = [
     // Below the orienteering map, which covers it with its paper where there is map. Its labels
     // too: where they name the same place as the town names on top, collision keeps only those.
     ...ground,
-    ...(options.print ? [] : stateLayers()),
+    ...stateLayers(),
     ...labels,
-    ...(options.print ? [] : [stateLabelLayer()]),
-    ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}),
-    {
-      id: 'hillshade',
-      type: 'hillshade',
-      source: 'dem',
-      layout: {visibility: visibility('hillshade')},
-      // Light from the north west, the cartographic convention, and only the shadows: the
-      // orienteering map keeps its colours on the sunny side, as a multiply blend would.
-      paint: {
-        'hillshade-illumination-direction': 315,
-        'hillshade-illumination-anchor': 'map',
-        'hillshade-exaggeration': 0.45,
-        'hillshade-shadow-color': '#000000',
-        'hillshade-highlight-color': 'rgba(0, 0, 0, 0)',
-        'hillshade-accent-color': 'rgba(0, 0, 0, 0)',
-      },
-    },
+    stateLabelLayer(),
+    ...isomLayers({source: 'mapant', minZoom: MAP_MIN_ZOOM}).map((layer) =>
+      OPTIONAL_STYLE_LAYERS.private.includes(layer.id)
+        ? ({...layer, layout: {...layer.layout, visibility: privateVisibility}} as LayerSpecification)
+        : layer,
+    ),
+    hillshadeLayer(visibility('hillshade')),
     placesLayer(visibility('places')),
     ...drawingLayers(),
   ];
 
   return {version: 8, glyphs: GLYPHS_URL, sprite: background.sprite, sources, layers};
+}
+
+/**
+ * Mapterhorn's terrain. `tileSize` is what the source is declared to have: a print declares the
+ * tiles smaller than they are, so that MapLibre -- which picks a tile level from the zoom alone --
+ * reads the terrain at the density of the paper rather than of a screen at that scale.
+ */
+function demSource(tileSize = 512): SourceSpecification {
+  return {
+    type: 'raster-dem',
+    tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
+    tileSize,
+    maxzoom: MAPTERHORN_MAX_ZOOM,
+    encoding: 'terrarium',
+  };
+}
+
+function hillshadeLayer(visibility: 'visible' | 'none'): LayerSpecification {
+  return {
+    id: 'hillshade',
+    type: 'hillshade',
+    source: 'dem',
+    layout: {visibility},
+    // Light from the north west, the cartographic convention, and only the shadows: the
+    // orienteering map keeps its colours on the sunny side, as a multiply blend would.
+    paint: {
+      'hillshade-illumination-direction': 315,
+      'hillshade-illumination-anchor': 'map',
+      'hillshade-exaggeration': 0.45,
+      'hillshade-shadow-color': '#000000',
+      'hillshade-highlight-color': 'rgba(0, 0, 0, 0)',
+      'hillshade-accent-color': 'rgba(0, 0, 0, 0)',
+    },
+  };
+}
+
+/**
+ * The hill shading alone, on a transparent ground: the one raster layer of a PDF, which draws
+ * everything else as vectors (print.ts). The terrain is read at the density of the paper.
+ */
+export function hillshadeStyle(): StyleSpecification {
+  return {
+    version: 8,
+    sources: {dem: demSource(128)},
+    layers: [hillshadeLayer('visible')],
+  };
 }
 
 /**
@@ -346,7 +356,9 @@ export function attributions(
     notices.push(BASEMAP_ATTRIBUTION);
   }
   if (zoom >= MAP_MIN_ZOOM) {
-    for (const {state, info} of ARCHIVES) {
+    // Those read so far: an archive's header is read as soon as a tile near its state is asked for,
+    // and the map refreshes the notices when one arrives (map.ts).
+    for (const {state, info} of LOADED_ARCHIVES) {
       if (state.attribution && (!view || intersects(view, info.bounds))) {
         notices.push(state.attribution);
       }

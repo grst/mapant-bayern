@@ -1,19 +1,13 @@
 /**
- * Serving a print map the archive's deepest tiles, whatever its zoom.
+ * Merging vector tiles: one tile on a border between two states' archives, each holding its own
+ * side of it (archive.ts).
  *
- * MapLibre picks the tile level from the zoom alone, so a print at the zoom of its scale would get
- * the tiles a screen at that scale gets -- generalised for the screen, without form lines and
- * knolls. So the print map is handed tiles it believes to be level z, each merged from the
- * archive's tiles `levels(z)` deeper that cover the same square.
- *
- * Merging is a rewrite of the protobuf, not a decode into features: each child's layers are
+ * Merging is a rewrite of the protobuf, not a decode into features: each tile's layers are
  * appended to the merged tile's layer of the same name, with the tag indices shifted onto the
- * merged key and value tables, and the geometry offset into the child's quadrant of a tile whose
- * extent is 2^levels times the child's. Nothing is re-clipped. The children's buffers overlap
- * inside the merged tile, where they are drawn twice in the same place.
+ * merged key and value tables. Nothing is re-clipped. The buffers overlap inside the merged tile,
+ * where they are drawn twice in the same place.
  */
 
-import {addProtocol} from 'maplibre-gl';
 import {PbfReader, PbfWriter} from 'pbf';
 
 interface MergedLayer {
@@ -210,49 +204,4 @@ export function mergeTiles(tiles: ArrayBuffer[]): ArrayBuffer {
     appendTile(layers, data, 0, 0, CHILD_EXTENT, 1);
   }
   return encode(layers, CHILD_EXTENT);
-}
-
-export interface MergedTilesOptions {
-  /** URL scheme MapLibre asks for tiles under: `<scheme>://{z}/{x}/{y}`. */
-  scheme: string;
-  /** One tile of the archive, or null where it has none. */
-  fetchTile(z: number, x: number, y: number, signal: AbortSignal): Promise<ArrayBuffer | null>;
-  /** How many levels deeper to read, for a tile of level z. */
-  levels(z: number): number;
-}
-
-export function registerMergedTiles({scheme, fetchTile, levels}: MergedTilesOptions): void {
-  addProtocol(scheme, async (request, abortController) => {
-    const [z, x, y] = request.url.replace(`${scheme}://`, '').split('/').map(Number);
-    const depth = levels(z);
-    if (depth === 0) {
-      return {data: (await fetchTile(z, x, y, abortController.signal)) ?? new ArrayBuffer(0)};
-    }
-    const span = 2 ** depth;
-    const children: Promise<{column: number; row: number; data: ArrayBuffer | null}>[] = [];
-    for (let row = 0; row < span; row++) {
-      for (let column = 0; column < span; column++) {
-        children.push(
-          fetchTile(z + depth, x * span + column, y * span + row, abortController.signal)
-            // A child that cannot be read costs its own square, not the whole tile.
-            .catch(() => null)
-            .then((data) => ({column, row, data})),
-        );
-      }
-    }
-
-    const mergedExtent = CHILD_EXTENT * span;
-    const layers = new Map<string, MergedLayer>();
-    for (const {column, row, data} of await Promise.all(children)) {
-      if (!data) {
-        continue;
-      }
-      try {
-        appendTile(layers, data, column, row, mergedExtent, span);
-      } catch (error) {
-        console.warn(`Skipping an unreadable tile under ${request.url}`, error);
-      }
-    }
-    return {data: encode(layers, mergedExtent)};
-  });
 }

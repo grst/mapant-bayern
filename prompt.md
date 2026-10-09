@@ -111,3 +111,9 @@ modifications to karttapullautin or the mapant-nf pipeline.
   not, export as a georecferenced image, and offer a zip bundle with ocd +
   background map in that case. If no background map is selected, a single ocd
   file should download either way.
+
+--------------------------------------------------------------------------------
+
+I feel loading the mapant tiles is a bit slow, while the openfreemap tiles load
+almost instantly. Diagnose what's the issue (network request, rendering, etc.).
+Propose potential solutions, but do not implement anything yet.

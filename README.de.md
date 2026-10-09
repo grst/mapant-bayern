@@ -36,6 +36,5 @@ Wenn du eine andere Lizenz benötigst, [melde dich gerne](mailto:gregor@sturmclo
 
 ## Lizenz
 
-Der Code steht unter der MIT-Lizenz ([`LICENSE`](https://github.com/grst/mapant-bayern/blob/main/LICENSE)), außer der [`webapp`](https://github.com/grst/mapant-bayern/tree/main/webapp),
-die unter der GPLv3 steht ([`webapp/LICENSE`](https://github.com/grst/mapant-bayern/blob/main/webapp/LICENSE)), weil sie den
-ISOM-Symbolsatz von OpenOrienteering Mapper als Vorlage für den OCAD-Export enthält.
+Der Code steht unter der GNU General Public License v3.0 oder später ([`LICENSE`](https://github.com/grst/mapant-bayern/blob/main/LICENSE)).
+Die Kartendaten stehen unter CC-BY-NC 4.0 (siehe oben).

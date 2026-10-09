@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
+    "@maplibre/maplibre-gl-style-spec": "^26.4.4",
     "@metsa/isom-maplibre": "file:vendor/metsa-isom-maplibre-0.1.1-mapant.3.tgz",
     "@types/proj4": "^2.5.6",
     "fflate": "^0.8.3",

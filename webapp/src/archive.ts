@@ -11,6 +11,11 @@
  * To the rest of the app they are one map: fetchTile() asks every archive whose bounds the tile
  * touches, and a tile on a border between two -- each holding its own side, buffer included -- is
  * merged into one.
+ *
+ * Nothing waits for the archives up front. The map is built for the zooms mapant-nf cuts
+ * (ARCHIVE_ZOOMS) and starts at once, and an archive's header -- a request to the bucket, which
+ * answers range requests slowly -- is read only when a tile near its state is first asked for. A
+ * visit to Bavaria reads Bavaria's header, not all of them.
  */
 
 import {PMTiles} from 'pmtiles';
@@ -43,8 +48,11 @@ export interface ArchiveInfo {
   bounds?: [number, number, number, number];
 }
 
-/** Used when no header can be read: the zooms mapant-nf cuts by default. */
-const FALLBACK: ArchiveInfo = {minZoom: 10, maxZoom: 15};
+/**
+ * The zooms mapant-nf cuts, which the map is built for before any header is read. An archive whose
+ * header says otherwise is read all the same, within these zooms, and reported.
+ */
+export const ARCHIVE_ZOOMS = {minZoom: 10, maxZoom: 15} as const;
 
 export interface StateArchive {
   state: FederalState;
@@ -72,21 +80,36 @@ async function load(state: FederalState, url: string): Promise<StateArchive> {
   };
 }
 
+/** The states that have an archive. */
+const MAPPED_STATES = STATES.filter((state) => state.archive);
+
+/** Each state's archive, once asked for: its header read, or null where it cannot be. */
+const archives = new Map<string, Promise<StateArchive | null>>();
+
+/** The archives whose header has been read, for what has to be answered at once (attributions). */
+export const LOADED_ARCHIVES: StateArchive[] = [];
+
+const loadListeners = new Set<() => void>();
+
+/** Called whenever another archive's header has been read. */
+export function onArchiveLoaded(listener: () => void): void {
+  loadListeners.add(listener);
+}
+
 /**
- * The archives whose header could be read, before the style is built: the zooms decide where the
- * OpenFreeMap basemap hands over to the orienteering map, and the bounds which archive a tile is
- * asked of. An archive that cannot be read -- not uploaded yet, say -- is left out with a warning
- * rather than costing the others.
+ * A state's archive, its header read on the first call. One that cannot be read -- not uploaded
+ * yet, say -- is left out with a warning rather than costing the others.
  */
-export const ARCHIVES: StateArchive[] = (
-  await Promise.all(
-    STATES.filter((state) => state.archive).map(async (state): Promise<StateArchive | null> => {
+function archiveOf(state: FederalState): Promise<StateArchive | null> {
+  let archive = archives.get(state.id);
+  if (!archive) {
+    archive = (async () => {
       if (localBase) {
         const url = new URL(state.archive!, localBase).href;
         try {
-          const archive = await load(state, url);
+          const local = await load(state, url);
           console.info(`${state.name}: local archive ${url}`);
-          return archive;
+          return local;
         } catch {
           // None here (the dev server answers a missing file with the app's HTML): the published one.
         }
@@ -98,32 +121,57 @@ export const ARCHIVES: StateArchive[] = (
         console.warn(`Could not read the map archive of ${state.name} (${url})`, error);
         return null;
       }
-    }),
-  )
-).filter((archive): archive is StateArchive => archive !== null);
+    })().then((loaded) => {
+      if (loaded) {
+        const {minZoom, maxZoom} = loaded.info;
+        if (minZoom !== ARCHIVE_ZOOMS.minZoom || maxZoom !== ARCHIVE_ZOOMS.maxZoom) {
+          console.warn(
+            `${state.name}: archive has zooms ${minZoom}-${maxZoom}, the map is built for ` +
+              `${ARCHIVE_ZOOMS.minZoom}-${ARCHIVE_ZOOMS.maxZoom} (ARCHIVE_ZOOMS)`,
+          );
+        }
+        LOADED_ARCHIVES.push(loaded);
+        loadListeners.forEach((listener) => listener());
+      }
+      return loaded;
+    });
+    archives.set(state.id, archive);
+  }
+  return archive;
+}
 
-/** All archives together: the widest zoom range and the bounds around them all. */
-export const ARCHIVE: ArchiveInfo = ARCHIVES.length
-  ? {
-      minZoom: Math.min(...ARCHIVES.map((a) => a.info.minZoom)),
-      maxZoom: Math.max(...ARCHIVES.map((a) => a.info.maxZoom)),
-      bounds: [
-        Math.min(...ARCHIVES.map((a) => a.info.bounds[0])),
-        Math.min(...ARCHIVES.map((a) => a.info.bounds[1])),
-        Math.max(...ARCHIVES.map((a) => a.info.bounds[2])),
-        Math.max(...ARCHIVES.map((a) => a.info.bounds[3])),
-      ],
+/**
+ * Starts reading the headers of the archives a view may need, without waiting for them: called at
+ * start-up with the view the page opens at, so the header is on its way while the map is still
+ * being set up rather than only once it asks for its first tile.
+ */
+export function prefetchArchives(view: readonly number[]): void {
+  for (const state of MAPPED_STATES) {
+    if (!state.reach || intersects(view, state.reach)) {
+      void archiveOf(state);
     }
-  : FALLBACK;
+  }
+}
 
 export function intersects(a: readonly number[], b: readonly number[]): boolean {
   return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
 }
 
-/** The archives a tile may be in: those whose zooms hold its level and whose bounds it touches. */
-function archivesFor(z: number, x: number, y: number): StateArchive[] {
+/**
+ * The archives a tile may be in: those of the states it is near, their headers read as needed, and
+ * of those the ones whose zooms hold its level and whose bounds it touches.
+ */
+async function archivesFor(z: number, x: number, y: number): Promise<StateArchive[]> {
+  if (z < ARCHIVE_ZOOMS.minZoom || z > ARCHIVE_ZOOMS.maxZoom) {
+    return [];
+  }
   const box = tileBounds(z, x, y);
-  return ARCHIVES.filter((a) => z >= a.info.minZoom && z <= a.info.maxZoom && intersects(box, a.info.bounds));
+  const states = MAPPED_STATES.filter((state) => !state.reach || intersects(box, state.reach));
+  const loaded = await Promise.all(states.map(archiveOf));
+  return loaded.filter(
+    (a): a is StateArchive =>
+      a !== null && z >= a.info.minZoom && z <= a.info.maxZoom && intersects(box, a.info.bounds),
+  );
 }
 
 /**
@@ -132,7 +180,7 @@ function archivesFor(z: number, x: number, y: number): StateArchive[] {
  * costs its own side of the tile, unless every archive asked failed.
  */
 export async function fetchTile(z: number, x: number, y: number, signal?: AbortSignal): Promise<ArrayBuffer | null> {
-  const candidates = archivesFor(z, x, y);
+  const candidates = await archivesFor(z, x, y);
   const results = await Promise.allSettled(candidates.map((a) => a.pmtiles.getZxy(z, x, y, signal)));
   const tiles: ArrayBuffer[] = [];
   for (const result of results) {
@@ -151,23 +199,25 @@ export async function fetchTile(z: number, x: number, y: number, signal?: AbortS
 }
 
 /**
- * Whether a web-mercator tile lies wholly within mapped ground: inside an archive's bounds and its
- * zooms, and inside its state's outline -- the bounds alone would take in a neighbour's ground, as
- * Bayern's take in Austria. Where it does, the orienteering map's paper covers
- * everything under it, and the basemap need not fetch the tile (basemap.ts).
+ * Whether a web-mercator tile lies wholly within a state that has an orienteering map, at the
+ * zooms the map is shown at. There the basemap need not fetch the tile (basemap.ts): it is the
+ * orienteering map that is shown, and nothing of the basemap is wanted under it -- not even where
+ * the state's archive does not reach (yet), which is left empty rather than costing requests to
+ * openfreemap.org.
  *
  * Errs towards false: a tile on a state's border, or anywhere the outlines cannot be read, is not
- * covered.
+ * covered, since the ground on the other side of the border still needs its basemap.
  */
 export async function isMapped(z: number, x: number, y: number): Promise<boolean> {
+  if (z < ARCHIVE_ZOOMS.minZoom) {
+    return false;
+  }
   const box = tileBounds(z, x, y);
-  for (const archive of ARCHIVES) {
-    const [west, south, east, north] = archive.info.bounds;
-    if (z < archive.info.minZoom || box[0] < west || box[1] < south || box[2] > east || box[3] > north) {
-      continue;
-    }
-    const outline = await stateOutline(archive.state.id).catch(() => undefined);
-    if (outline && boxInOutline(box, outline)) {
+  for (const state of MAPPED_STATES) {
+    const outline = await stateOutline(state.id).catch(() => undefined);
+    // Only where the state's archive can actually be read: a state whose archive is missing keeps
+    // its basemap.
+    if (outline && boxInOutline(box, outline) && (await archiveOf(state))) {
       return true;
     }
   }

@@ -10,7 +10,7 @@
  */
 
 import proj4 from 'proj4';
-import type {XY} from './tiles';
+import type {XY} from '../vector/tiles';
 
 const WEB_MERCATOR = 'EPSG:3857';
 

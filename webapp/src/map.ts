@@ -1,8 +1,9 @@
-import {FullscreenControl, Map, NavigationControl, ScaleControl, setWorkerUrl} from 'maplibre-gl';
+import {FullscreenControl, Map, NavigationControl, ScaleControl, setWorkerCount, setWorkerUrl} from 'maplibre-gl';
 import type {IControl} from 'maplibre-gl';
 // MapLibre parses tiles in web workers, whose script it loads from next to its own module -- which
 // a bundle does not have. Vite builds the worker with its dependencies and hands over the URL.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import {onArchiveLoaded} from './archive';
 import {t} from './i18n';
 import type {Key} from './i18n/en';
 import {provideIsomIcons, rasterizeIsomIcons} from './isomstyle';
@@ -16,6 +17,15 @@ import {
 } from './layers';
 
 setWorkerUrl(workerUrl);
+
+/**
+ * MapLibre parses tiles in one worker outside Safari. The orienteering map's tiles are heavy -- a
+ * tile in rocky ground holds hundreds of thousands of cliff segments -- and one worker parses them
+ * one after another. Half the cores, two to four, parse a screenful side by side; more would cost
+ * memory and start-up for little more.
+ */
+export const WORKER_COUNT = Math.min(4, Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) / 2)));
+setWorkerCount(WORKER_COUNT);
 
 export interface MapContext {
   map: Map;
@@ -96,6 +106,8 @@ export function createMap(
   };
   map.on('moveend', updateAttribution);
   map.on('zoom', updateAttribution);
+  // A state's LiDAR is credited once its archive is known to be in view.
+  onArchiveLoaded(updateAttribution);
   updateAttribution();
 
   // Layout properties can only be set once the style is in; the initial visibility is part of
@@ -115,9 +127,11 @@ export function createMap(
         return;
       }
       visible[layer] = value;
-      whenStyleReady(() =>
-        map.setLayoutProperty(OPTIONAL_STYLE_LAYERS[layer], 'visibility', visible[layer] ? 'visible' : 'none'),
-      );
+      whenStyleReady(() => {
+        for (const id of OPTIONAL_STYLE_LAYERS[layer]) {
+          map.setLayoutProperty(id, 'visibility', visible[layer] ? 'visible' : 'none');
+        }
+      });
       updateAttribution();
       listeners.forEach((listener) => listener());
     },

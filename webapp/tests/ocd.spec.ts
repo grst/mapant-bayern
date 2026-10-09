@@ -1,4 +1,6 @@
-import {expect, test, type Page} from '@playwright/test';
+import {readFileSync, writeFileSync} from 'node:fs';
+import {expect, test, type Page, type TestInfo} from '@playwright/test';
+import {unzipSync} from 'fflate';
 // The reference reader for the format, used here to check the writer against something that is not
 // itself. AGPL, so it stays a test dependency and is never bundled into the app.
 import {ocadToGeoJson, readOcad} from 'ocad2geojson';
@@ -20,25 +22,31 @@ async function stubTiles(page: Page): Promise<void> {
   await serveArchive(page);
 }
 
-async function openPrintPanel(page: Page): Promise<void> {
+async function openOcdPanel(page: Page): Promise<void> {
   await page.goto('/#map=15/47.5635/10.2142&layers=l&lang=en');
   await expect(page.locator('#map canvas').first()).toBeVisible();
-  await page.getByRole('button', {name: 'Export as PDF'}).first().click();
+  await page.getByRole('button', {name: 'Export as OCAD file'}).first().click();
   // The fixture covers an A4 page at 1:4000, which is the smallest scale on offer.
-  await page.selectOption('.print-panel-body select', '4000');
+  await page.selectOption('.ocd-panel select', '4000');
+}
+
+/** Exports with the panel as it is set, and returns the download. */
+async function exportFile(page: Page, testInfo: TestInfo): Promise<{name: string; path: string}> {
+  const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
+  await page.locator('.ocd-panel .print-export').click();
+  const download = await downloadPromise;
+  const path = testInfo.outputPath(download.suggestedFilename());
+  await download.saveAs(path);
+  return {name: download.suggestedFilename(), path};
 }
 
 test('exports the print area as an OCAD file built on the ISOM symbol set', async ({page}, testInfo) => {
   await stubTiles(page);
-  await openPrintPanel(page);
+  await openOcdPanel(page);
 
-  const downloadPromise = page.waitForEvent('download', {timeout: 120_000});
-  await page.locator('.print-export-ocd').click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('mapant-germany_1-4000.ocd');
-
-  const file = testInfo.outputPath('export.ocd');
-  await download.saveAs(file);
+  // Without a background map, the OCD file alone.
+  const {name, path: file} = await exportFile(page, testInfo);
+  expect(name).toBe('mapant-germany_1-4000.ocd');
 
   const ocad = await readOcad(file);
 
@@ -56,7 +64,9 @@ test('exports the print area as an OCAD file built on the ISOM symbol set', asyn
   const symbols = new Set(objects.map((object) => object.sym));
   expect(symbols).toContain(101000); // contour
   expect(symbols).toContain(102000); // index contour
-  expect([...symbols].some((symbol) => symbol === 201000 || symbol === 202000)).toBe(true); // cliff
+  // Cliffs as plain lines: the impassable cliff's top line (201.3) rather than 201 with its tags.
+  expect([...symbols].some((symbol) => symbol === 201003 || symbol === 202000)).toBe(true);
+  expect(symbols).not.toContain(201000);
   expect([...symbols].some((symbol) => Math.floor(symbol / 1000) >= 401 && Math.floor(symbol / 1000) <= 410)).toBe(true); // vegetation
   // The OpenStreetMap shapes, in ISOM 2017-2 as mapant-nf translated them.
   expect(symbols).toContain(521000); // building
@@ -65,9 +75,8 @@ test('exports the print area as an OCAD file built on the ISOM symbol set', asyn
   // Every object references a symbol the file actually defines; a dangling reference is what OCAD
   // reports as a damaged object.
   const defined = new Set(ocad.symbols.map((symbol) => symbol.symNum));
-  for (const object of objects) {
-    expect(defined).toContain(object.sym);
-  }
+  // One assertion over all of them: an expect() per object takes longer than the export.
+  expect([...symbols].filter((symbol) => !defined.has(symbol))).toEqual([]);
 
   // Georeferenced in the LiDAR's own system: 63005 is ETRS89 / UTM zone 32N, and the reference
   // point is the centre of the print area, so the map lands where the terrain is.
@@ -118,11 +127,68 @@ test('an area with no tiles under it says so rather than saving an empty file', 
   // Far outside the fixture: the archive has no tile there.
   await page.goto('/#map=15/47.9000/11.5000&layers=l&lang=en');
   await expect(page.locator('#map canvas').first()).toBeVisible();
-  await page.getByRole('button', {name: 'Export as PDF'}).first().click();
+  await page.getByRole('button', {name: 'Export as OCAD file'}).first().click();
 
   const download = page.waitForEvent('download', {timeout: 5_000}).catch(() => null);
-  await page.locator('.print-export-ocd').click();
+  await page.locator('.ocd-panel .print-export').click();
 
   await expect(page.locator('.toast')).toContainText('no map data');
   expect(await download).toBeNull();
+});
+
+test('writes only the feature groups that are ticked', async ({page}, testInfo) => {
+  await stubTiles(page);
+  await openOcdPanel(page);
+  for (const group of ['vegetation', 'landforms', 'cliffs', 'water', 'paths', 'manmade', 'private']) {
+    await page.locator(`input[data-objects="${group}"]`).uncheck();
+  }
+
+  const ocad = await readOcad((await exportFile(page, testInfo)).path);
+  const symbols = new Set((ocad.objects as unknown as {sym: number}[]).map((object) => Math.floor(object.sym / 1000)));
+  expect([...symbols].sort()).toEqual([101, 102, 103]);
+});
+
+test('bundles a georeferenced background map with the OCD file that opens it', async ({page}, testInfo) => {
+  await stubTiles(page);
+  await openOcdPanel(page);
+  // Vegetation as a background map instead of as objects.
+  await page.locator('input[data-objects="vegetation"]').uncheck();
+  await page.locator('.ocd-background summary').click();
+  await page.locator('input[data-background="vegetation"]').check();
+
+  const {name, path} = await exportFile(page, testInfo);
+  expect(name).toBe('mapant-germany_1-4000.zip');
+  const files = unzipSync(readFileSync(path));
+  expect(Object.keys(files).sort()).toEqual([
+    'mapant-germany_1-4000.ocd',
+    'mapant-germany_1-4000_background.pgw',
+    'mapant-germany_1-4000_background.png',
+  ]);
+
+  // A PNG of about an A4 page at 300 dpi.
+  const png = Buffer.from(files['mapant-germany_1-4000_background.png']);
+  expect(png.subarray(1, 4).toString()).toBe('PNG');
+  expect(png.readUInt32BE(16)).toBeGreaterThan(2400);
+  expect(png.readUInt32BE(20)).toBeGreaterThan(3300);
+
+  // The world file: pixels of 0.0847 mm at 1:4000, north up, the top left corner west and north
+  // of the georeferencing point in UTM 32N.
+  const world = new TextDecoder().decode(files['mapant-germany_1-4000_background.pgw']).trim().split('\n').map(Number);
+  expect(world[0]).toBeCloseTo(0.33867, 4);
+  expect(world.slice(1, 3)).toEqual([0, 0]);
+  expect(world[3]).toBeCloseTo(-0.33867, 4);
+  expect(world[4]).toBeGreaterThan(590_000);
+  expect(world[5]).toBeLessThan(5_272_000);
+
+  const ocdPath = testInfo.outputPath('bundled.ocd');
+  writeFileSync(ocdPath, files['mapant-germany_1-4000.ocd']);
+  const ocad = await readOcad(ocdPath);
+  // The OCD names the image beside it, in the type-8 string OCAD and Mapper read background maps from.
+  const background = JSON.stringify(ocad.parameterStrings['8']);
+  expect(background).toContain('"_first":"mapant-germany_1-4000_background.png"');
+  expect(background).toContain('"code":"u","value":"0.0846666667"');
+  // And the vegetation is not among the objects.
+  const symbols = (ocad.objects as unknown as {sym: number}[]).map((object) => Math.floor(object.sym / 1000));
+  expect(symbols.some((symbol) => symbol >= 401 && symbol <= 410)).toBe(false);
+  expect(symbols).toContain(101);
 });

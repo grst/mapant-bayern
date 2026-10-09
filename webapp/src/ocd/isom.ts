@@ -46,9 +46,13 @@ const CURVES: Record<string, Symbolisation> = {
 
 /**
  * Symbols the style draws under one code whose variants ISOM splits by geometry: the water body
- * and its bank line, the paved area and its edge.
+ * and its bank line, the paved area and its edge. And the impassable cliff, whose 201 in the
+ * template is the line with tags: karttapullautin gives the cliff's top edge without knowing
+ * which side is the drop, so it is the plain line, 201.3 -- the mapper adds the tags in the field,
+ * as for 202, which is a plain line already.
  */
 const BY_GEOMETRY: Record<string, Partial<Record<GeometryKind, string>>> = {
+  '201.000': {line: '201.3'}, // impassable cliff, top line
   '301.000': {polygon: '301.1', line: '301.4'}, // uncrossable body of water, full colour; bank line
   '501.000': {polygon: '501.1'}, // paved area
 };
