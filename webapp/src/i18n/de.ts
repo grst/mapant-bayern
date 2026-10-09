@@ -14,7 +14,7 @@ export const de: Record<Key, string> = {
 
   'hint.zoomIn': 'Hineinzoomen, um die Orientierungslaufkarte zu sehen',
 
-  'status.rendered': 'Mapant gerechnet',
+  'status.rendered': 'fertig',
   'status.free': 'LiDAR frei verfügbar',
   'status.fee': 'LiDAR gegen Gebühr',
   'status.none': 'Kein LiDAR verfügbar',
@@ -23,7 +23,7 @@ export const de: Record<Key, string> = {
   'layers.toggle': 'Ebenen',
   'layers.hillshade': 'Schummerung',
   'layers.places': 'Ortsnamen',
-  'layers.private': 'Privatgelände (oliv)',
+  'layers.private': 'Privatgelände',
 
   'draw.line': 'Strecke messen',
   'draw.polygon': 'Fläche messen',

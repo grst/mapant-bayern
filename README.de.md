@@ -1,9 +1,8 @@
 # Mapant Germany
 
 Mapant Germany ist eine automatisch generierte Orientierungslaufkarte. Sie kann nützlich sein für Trainingszwecke, 
-oder um Geländeabschnitte für richtige OL Karten zu finden. Sie begann als Mapant Bayern und deckt ganz Bayern ab;
-die anderen Bundesländer folgen, wo ihre LiDAR-Daten frei verfügbar sind, eines nach dem anderen. In kleinen
-Zoomstufen zeigt die Karte, welche das sind.
+oder um Geländeabschnitte für richtige OL Karten zu finden. Das Projekt begann als Mapant Bayern. Weitere
+Bundesländer, die offene LiDAR-Daten bereitstellen, werden nach und nach hinzugefügt.
 
 <p align="center">
   <img src="img/overview.webp" alt="Übersicht" width="46%" />
@@ -12,8 +11,8 @@ Zoomstufen zeigt die Karte, welche das sind.
 
 Die Karte wurde mit [karttapullautin](https://github.com/karttapullautin/karttapullautin) und der
 [mapant-nf](https://github.com/grst/mapant-nf) pipeline erstellt.
- * Wie die LIDAR-Kacheln verarbeitet wurden, ist in [`processing_pipeline`](https://github.com/grst/mapant-bayern/tree/main/processing_pipeline) dokumentiert.
- * Die Benutzeroberfläche liegt in [`webapp`](https://github.com/grst/mapant-bayern/tree/main/webapp).
+ * Wie die LIDAR-Kacheln verarbeitet wurden, ist in [`processing_pipeline`](https://github.com/grst/mapant-germany/tree/main/processing_pipeline) dokumentiert.
+ * Die Benutzeroberfläche liegt in [`webapp`](https://github.com/grst/mapant-germany/tree/main/webapp).
 
 Die Karte jedes Bundeslandes kann im [pmtiles](https://docs.protomaps.com/pmtiles/)-Format heruntergeladen werden
  und darf unter der Lizenz [CC-BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.de) weiterverwendet werden:
@@ -36,5 +35,5 @@ Wenn du eine andere Lizenz benötigst, [melde dich gerne](mailto:gregor@sturmclo
 
 ## Lizenz
 
-Der Code steht unter der GNU General Public License v3.0 oder später ([`LICENSE`](https://github.com/grst/mapant-bayern/blob/main/LICENSE)).
+Der Code steht unter der GNU General Public License v3.0 oder später ([`LICENSE`](https://github.com/grst/mapant-germany/blob/main/LICENSE)).
 Die Kartendaten stehen unter CC-BY-NC 4.0 (siehe oben).

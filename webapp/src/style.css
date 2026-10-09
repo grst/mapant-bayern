@@ -339,6 +339,11 @@ a {
     justify-content: flex-start;
     font-size: 0.68rem;
   }
+
+  .footer .made-with,
+  .footer .made-with + .sep {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

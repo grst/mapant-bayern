@@ -21,7 +21,7 @@ export const en = {
   'layers.toggle': 'Layers',
   'layers.hillshade': 'Hill shading',
   'layers.places': 'Town names',
-  'layers.private': 'Private property (olive)',
+  'layers.private': 'Private property',
 
   'draw.line': 'Measure distance',
   'draw.polygon': 'Measure area',

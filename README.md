@@ -2,8 +2,8 @@
 
 Mapant Germany is an automatically generated orienteering map. It can be useful
 for training purposes or for identifying new terrains to be properly mapped. The
-project started as Mapant Bayern. Other federal states are being added if they
-freely provide LiDAR data.
+project started as Mapant Bayern. Other federal states that provide open LiDAR
+data are beeing added.
 
 <p align="center">
   <img src="img/overview.webp" alt="Overview" width="46%" />
@@ -16,9 +16,9 @@ and processed through the [mapant-nf](https://github.com/grst/mapant-nf)
 pipeline.
 
 - Details on how the LIDAR tiles were processed are documented in
-  [`processing_pipeline`](https://github.com/grst/mapant-bayern/tree/main/processing_pipeline).
+  [`processing_pipeline`](https://github.com/grst/mapant-germany/tree/main/processing_pipeline).
 - The user interface is available in
-  [`webapp`](https://github.com/grst/mapant-bayern/tree/main/webapp).
+  [`webapp`](https://github.com/grst/mapant-germany/tree/main/webapp).
 
 The map of each state can be downloaded in
 [pmtiles](https://docs.protomaps.com/pmtiles/) format and may be reused under
@@ -60,5 +60,5 @@ out](mailto:gregor@sturmcloud.org) to discuss.
 ## Licence
 
 The code is licensed under the GNU General Public License v3.0 or later
-([`LICENSE`](https://github.com/grst/mapant-bayern/blob/main/LICENSE)). The map
+([`LICENSE`](https://github.com/grst/mapant-germany/blob/main/LICENSE)). The map
 data is CC-BY-NC 4.0 (see above).

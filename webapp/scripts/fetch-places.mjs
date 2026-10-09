@@ -26,7 +26,7 @@ out body;
 const response = await fetch(OVERPASS_URL, {
   method: 'POST',
   // Overpass answers 406 without a real User-Agent.
-  headers: {'User-Agent': 'mapant-germany/1.0 (https://github.com/grst/mapant-bayern)'},
+  headers: {'User-Agent': 'mapant-germany/1.0 (https://github.com/grst/mapant-germany)'},
   body: new URLSearchParams({data: QUERY}),
 });
 

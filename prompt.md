@@ -8,7 +8,7 @@ removed once completed.
 - Simple navbar with title "Mapant Bayern" and menu items. Hamburger item that
   opens sidebar on mobile.
 - Menu items:
-  - source on github (https://github.com/grst/mapant-bayern)
+  - source on github (https://github.com/grst/mapant-germany)
   - "about" page, separate page, contents from "about.md" (WIP, will be manually
     populated later)
   - other mapant maps (https://mapant.net)
